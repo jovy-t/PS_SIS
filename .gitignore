@@ -1,0 +1,27 @@
+# Ignore environment config
+.env
+
+# macOS system files
+.DS_Store
+
+# SQL Developer, TOAD, or IDE cache
+*.log
+*.tmp
+*.bak
+
+# Ignore Python scripts or notebook junk (if you add automation later)
+__pycache__/
+*.py[cod]
+*.ipynb_checkpoints
+
+# VSCode or JetBrains config
+.vscode/
+.idea/
+
+# Ignore node modules if you use JS scripts
+node_modules/
+
+# Ignore output exports or compiled data
+/output/
+*.csv
+*.xlsx
