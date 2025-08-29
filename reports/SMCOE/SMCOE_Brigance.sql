@@ -1,36 +1,115 @@
 -- Brigance Assessment Report for SMCOE
 -- Pulls Pre-K and TK students with contact and demographic info
 
+WITH race_cte AS (
+  SELECT
+    STUDENTID,
+    MAX(CASE WHEN rn = 1 THEN racecd END) AS RACE1,
+    MAX(CASE WHEN rn = 2 THEN racecd END) AS RACE2,
+    MAX(CASE WHEN rn = 3 THEN racecd END) AS RACE3
+  FROM (
+    SELECT
+      STUDENTID,
+      RACECD,
+      ROW_NUMBER() OVER (PARTITION BY STUDENTID ORDER BY TO_NUMBER(RACECD)) AS rn
+    FROM STUDENTRACE
+  )
+  GROUP BY STUDENTID
+),
+
+/* Path 1: CC → SECTIONS → TEACHERS */
+teacher_cc AS (
+  SELECT
+      cc.STUDENTID,
+      MIN(COALESCE(t.LASTFIRST, t.FIRST_NAME || ' ' || t.LAST_NAME)) AS TEACHER_NAME
+  FROM CC cc
+  JOIN SECTIONS s
+    ON s.ID = cc.SECTIONID
+  LEFT JOIN TEACHERS t
+    ON t.ID = s.TEACHER
+  WHERE cc.DATEENROLLED <= TRUNC(SYSDATE)
+    AND (cc.DATELEFT IS NULL OR cc.DATELEFT >= TRUNC(SYSDATE))
+    AND cc.SECTIONID IS NOT NULL
+  GROUP BY cc.STUDENTID
+),
+
+/* Path 2: PSM_* tables */
+teacher_psm AS (
+  SELECT
+      se.STUDENTID,
+      MIN(pt.FIRSTNAME || ' ' || pt.LASTNAME) AS TEACHER_NAME
+  FROM PSM_SECTIONENROLLMENT se
+  JOIN PSM_SECTIONTEACHER st
+    ON st.SECTIONID = se.SECTIONID
+   AND (st.PRIORITYORDER = 1 OR st.PRIORITYORDER IS NULL)
+  JOIN PSM_TEACHER pt
+    ON pt.ID = st.TEACHERID
+  WHERE se.SECTIONENROLLMENTSTATUS = 0
+    AND (se.DATELEFT IS NULL OR se.DATELEFT >= TRUNC(SYSDATE))
+  GROUP BY se.STUDENTID
+),
+
+/* Path 3: by COURSENUMBER via SCHEDULETEACHERASSIGNMENTS */
+teacher_by_cn AS (
+  SELECT
+      se.STUDENTID,
+      MIN(
+        COALESCE(t2.LASTFIRST, t2.FIRST_NAME || ' ' || t2.LAST_NAME,
+                 pt2.FIRSTNAME || ' ' || pt2.LASTNAME)
+      ) AS TEACHER_NAME
+  FROM PSM_SECTIONENROLLMENT se
+  JOIN SECTIONS s
+    ON s.ID = se.SECTIONID
+  LEFT JOIN SCHEDULETEACHERASSIGNMENTS sta
+    ON sta.COURSENUMBER = s.COURSE_NUMBER
+   AND sta.SCHOOLID = s.SCHOOLID
+  /* TEACHERKEY inconsistencies: try TEACHERS.DCID, fallback TEACHERS.ID; also try PSM_TEACHER.ID */
+  LEFT JOIN TEACHERS t2
+    ON (t2.DCID = sta.TEACHERKEY OR t2.ID = sta.TEACHERKEY)
+  LEFT JOIN PSM_TEACHER pt2
+    ON pt2.ID = sta.TEACHERKEY
+  WHERE se.SECTIONENROLLMENTSTATUS = 0
+    AND (se.DATELEFT IS NULL OR se.DATELEFT >= TRUNC(SYSDATE))
+  GROUP BY se.STUDENTID
+)
+
 SELECT
-  e.first_name,
-  e.middle_name,
-  e.last_name,
-  e.student_number,
-  e.state_studentnumber,
-  e.grade_level,
-  e.schoolid,
-  sch.name AS school_name,
-  e.home_room AS teacher,
-  e.pl_language,
-  e.dob,
-  e.gender,
-  r.racecd,
-  e.ethnicity,
-  e.fedethnicity,
-  e.street,
-  e.city,
-  e.state,
-  e.zip,
-  e.home_phone
-
-FROM 
-  students e
-  LEFT JOIN studentrace r ON r.studentid = e.id
-  LEFT JOIN schools sch ON e.schoolid = sch.school_number
-
-WHERE
-  e.grade_level BETWEEN -1 AND 0 -- PreK and TK
-  AND e.schoolid NOT IN ('777777', '888888') -- Exclude district-wide/test sites
-  AND e.exitcode IS NULL
-
-ORDER BY e.last_name ASC;
+    e.FIRST_NAME, 
+    e.MIDDLE_NAME, 
+    e.LAST_NAME, 
+    e.STUDENT_NUMBER, 
+    e.STATE_STUDENTNUMBER, 
+    e.GRADE_LEVEL,
+    e.SCHOOLID,
+    sch.NAME AS SCHOOL_NAME,
+    /* First non-null across three sources */
+    COALESCE(tcc.TEACHER_NAME, tpsm.TEACHER_NAME, tcn.TEACHER_NAME) AS TEACHER,
+    ela.PRIMARYLANGUAGE,
+    e.DOB,
+    e.GENDER,
+    r.RACE1,
+    r.RACE2,
+    r.RACE3,
+    dem.BIRTHCOUNTRY,
+    e.FEDETHNICITY,
+    e.STREET,
+    e.CITY,
+    e.STATE,
+    e.ZIP,
+    e.HOME_PHONE
+FROM STUDENTS e
+LEFT JOIN race_cte r 
+       ON r.STUDENTID = e.ID
+LEFT JOIN SCHOOLS sch 
+       ON e.SCHOOLID = sch.SCHOOL_NUMBER
+LEFT JOIN S_CA_STU_X dem 
+       ON e.DCID = dem.STUDENTSDCID
+LEFT JOIN S_CA_STU_ELA_C ela
+       ON ela.STUDENTSDCID = e.DCID
+LEFT JOIN teacher_cc   tcc ON tcc.STUDENTID  = e.ID
+LEFT JOIN teacher_psm  tpsm ON tpsm.STUDENTID = e.ID
+LEFT JOIN teacher_by_cn tcn ON tcn.STUDENTID  = e.ID
+WHERE e.ENROLL_STATUS = 0
+  AND e.GRADE_LEVEL BETWEEN -1 AND 0
+  AND e.SCHOOLID NOT IN ('2','777777','888888')
+  AND e.EXITCODE IS NULL
