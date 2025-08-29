@@ -37,6 +37,62 @@ ela_cte AS (
   WHERE rn = 1
 ),
 
+/* Path 1: CC → SECTIONS → TEACHERS */
+teacher_cc AS (
+  SELECT
+      cc.STUDENTID,
+      MIN(COALESCE(t.LASTFIRST, t.FIRST_NAME || ' ' || t.LAST_NAME)) AS TEACHER_NAME
+  FROM CC cc
+  JOIN SECTIONS s
+    ON s.ID = cc.SECTIONID
+  LEFT JOIN TEACHERS t
+    ON t.ID = s.TEACHER
+  WHERE cc.DATEENROLLED <= TRUNC(SYSDATE)
+    AND (cc.DATELEFT IS NULL OR cc.DATELEFT >= TRUNC(SYSDATE))
+    AND cc.SECTIONID IS NOT NULL
+  GROUP BY cc.STUDENTID
+),
+
+/* Path 2: PSM_* tables */
+teacher_psm AS (
+  SELECT
+      se.STUDENTID,
+      MIN(pt.FIRSTNAME || ' ' || pt.LASTNAME) AS TEACHER_NAME
+  FROM PSM_SECTIONENROLLMENT se
+  JOIN PSM_SECTIONTEACHER st
+    ON st.SECTIONID = se.SECTIONID
+   AND (st.PRIORITYORDER = 1 OR st.PRIORITYORDER IS NULL)
+  JOIN PSM_TEACHER pt
+    ON pt.ID = st.TEACHERID
+  WHERE se.SECTIONENROLLMENTSTATUS = 0
+    AND (se.DATELEFT IS NULL OR se.DATELEFT >= TRUNC(SYSDATE))
+  GROUP BY se.STUDENTID
+),
+
+/* Path 3: by COURSENUMBER via SCHEDULETEACHERASSIGNMENTS */
+teacher_by_cn AS (
+  SELECT
+      se.STUDENTID,
+      MIN(
+        COALESCE(t2.LASTFIRST, t2.FIRST_NAME || ' ' || t2.LAST_NAME,
+                 pt2.FIRSTNAME || ' ' || pt2.LASTNAME)
+      ) AS TEACHER_NAME
+  FROM PSM_SECTIONENROLLMENT se
+  JOIN SECTIONS s
+    ON s.ID = se.SECTIONID
+  LEFT JOIN SCHEDULETEACHERASSIGNMENTS sta
+    ON sta.COURSENUMBER = s.COURSE_NUMBER
+   AND sta.SCHOOLID = s.SCHOOLID
+  /* TEACHERKEY inconsistencies: try TEACHERS.DCID, fallback TEACHERS.ID; also try PSM_TEACHER.ID */
+  LEFT JOIN TEACHERS t2
+    ON (t2.DCID = sta.TEACHERKEY OR t2.ID = sta.TEACHERKEY)
+  LEFT JOIN PSM_TEACHER pt2
+    ON pt2.ID = sta.TEACHERKEY
+  WHERE se.SECTIONENROLLMENTSTATUS = 0
+    AND (se.DATELEFT IS NULL OR se.DATELEFT >= TRUNC(SYSDATE))
+  GROUP BY se.STUDENTID
+),
+
 all_enrollment AS (
   -- Gets current and past enrollments in TK–3 range for 2024–2025 SY
   SELECT
@@ -86,15 +142,11 @@ SELECT
   s.first_name, s.middle_name, s.last_name, dem.namesuffix,
   s.gender, s.dob, s.street, s.city, s.zip, s.state,
   s.fedethnicity, r.race1, r.race2, r.race3,
-  dem.birthcountry, s.mother, s.father,
-  dem.guardian2_firstname, dem.guardian2_lastname,
-  dem.g1relationship, dem.g2relationship,
-  dem.guardianaddrstreet, dem.guardianaddrcity, dem.guardianaddrstate, dem.guardianaddrzip,
-  s.home_phone, s.guardianemail,
-  dem.parented, dem.parented2, dem.parentcorresplang,
+  dem.birthcountry,
   re.schoolid, sch.name AS school_name,
   re.grade_level, re.entrydate, re.exitdate, re.districtofresidence,
-  s.home_room AS teacher,
+   /* First non-null across three sources */
+  COALESCE(tcc.TEACHER_NAME, tpsm.TEACHER_NAME, tcn.TEACHER_NAME) AS TEACHER,
   dem.elastatus, dem.elastatusdate, ela.primarylanguagedesc,
   dem.spentrydate, dem.primarydisability, dem.sped504,
   dem.fosterprogram, re.lunchstatus
@@ -106,5 +158,8 @@ FROM
   LEFT JOIN race_cte r ON r.studentid = s.id
   LEFT JOIN schools sch ON re.schoolid = sch.school_number
   LEFT JOIN ela_cte ela ON s.dcid = ela.studentsdcid
+  LEFT JOIN teacher_cc   tcc ON tcc.studentid  = s.id
+  LEFT JOIN teacher_psm  tpsm ON tpsm.studentid = s.id
+  LEFT JOIN teacher_by_cn tcn ON tcn.studentid  = s.id
 
 ORDER BY s.student_number ASC;
