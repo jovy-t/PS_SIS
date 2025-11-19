@@ -1,89 +1,45 @@
-WITH all_enrollment AS (
-    -- Current students table
-    SELECT
-        dcid AS studentid,
-        student_number,
-        state_studentnumber,
-        entrydate,
-        exitdate,
-        exitcode,
-        grade_level,
-        schoolid
-    FROM students
-    WHERE
-        grade_level BETWEEN -1 AND 3
-        AND entrydate BETWEEN TO_DATE('08/14/2024', 'MM/DD/YYYY') AND TO_DATE('06/06/2025', 'MM/DD/YYYY')
-        AND NVL(exitdate, TO_DATE('12/31/9999','MM/DD/YYYY')) >= TO_DATE('08/15/2024','MM/DD/YYYY')
-        AND (
-            exitcode IS NULL
-            OR (exitcode NOT LIKE 'N%' AND exitcode != '100')
-        )
+-- Pulls Parent data
 
-    UNION ALL
-
-    -- reenrollments table
+WITH ranked_contacts AS (
     SELECT
-        s.dcid AS studentid,
+        s.dcid,
         s.student_number,
-        s.state_studentnumber,
-        r.entrydate,
-        r.exitdate,
-        r.exitcode,
-        r.grade_level,
-        r.schoolid
-    FROM students s
-    JOIN reenrollments r
-        ON r.studentid = s.id
-    WHERE
-        r.grade_level BETWEEN -1 AND 3
-        AND r.entrydate BETWEEN TO_DATE('08/14/2024', 'MM/DD/YYYY') AND TO_DATE('06/06/2025', 'MM/DD/YYYY')
-        AND NVL(r.exitdate, TO_DATE('12/31/9999','MM/DD/YYYY')) >= TO_DATE('08/15/2024','MM/DD/YYYY')
-        AND (
-            r.exitcode IS NULL
-            OR (r.exitcode NOT LIKE 'N%' AND r.exitcode != '100')
-        )
-),
-
-ranked_contacts AS (
-    SELECT
-        ae.studentid,
-        ae.student_number,
         p.firstname,
         p.middlename,
         p.lastname,
-        rel.lives_with,
-        rel.relationship,
-        p.gendercodesetid AS contact_gender, -- fixed alias
+        COALESCE(cs.displayvalue, cs.description) AS relationship,
+        CASE scd.liveswithflg
+            WHEN 1 THEN 'Yes'
+            WHEN 0 THEN 'No'
+            ELSE 'Unknown'
+        END AS lives_with,
+        p.gendercodesetid AS contact_gender,
         rel.primary_contact,
-        rel.contact_order,
         dem.parented,
         ROW_NUMBER() OVER (
-            PARTITION BY ae.studentid
+            PARTITION BY s.dcid
             ORDER BY rel.primary_contact DESC, sca.contactpriorityorder NULLS LAST, p.lastname, p.firstname
         ) AS rn
-    FROM all_enrollment ae
+    FROM students s
     JOIN studentcontactassoc sca
-        ON sca.studentdcid = ae.studentid
+        ON sca.studentdcid = s.dcid
+    LEFT JOIN studentcontactdetail scd
+        ON scd.studentcontactassocid = sca.studentcontactassocid
+    LEFT JOIN codeset cs
+        ON cs.codesetid = scd.relationshiptypecodesetid
     JOIN person p
         ON p.id = sca.personid
     LEFT JOIN s_contact_relationship_c rel
-        ON rel.students_dcid = ae.studentid
-       AND rel.s_contacts_sid = p.id
+        ON rel.students_dcid = s.dcid AND rel.s_contacts_sid = p.id
     LEFT JOIN S_CA_STU_X dem
-        ON dem.studentsdcid = ae.studentid
+        ON dem.studentsdcid = s.dcid
 )
 
 SELECT
     s.last_name,
-    s.middle_name,
     s.first_name,
-    ae.student_number,
+    s.student_number,
     s.state_studentnumber,
-    s.dob,
-    s.gender,
-    sch.name,
-    ae.grade_level,
-    s.home_room AS "Teacher",
 
     -- First Parent
     rc1.firstname AS "Parent 1 First Name",
@@ -101,24 +57,26 @@ SELECT
     rc2.contact_gender AS "Parent 2 Gender",
     dem.parented2 AS "Parent 2 Education Level"
 
-FROM all_enrollment ae
-JOIN students s
-    ON s.dcid = ae.studentid
+FROM students s
 LEFT JOIN S_CA_STU_X dem
     ON dem.studentsdcid = s.dcid
 LEFT JOIN schools sch
-    ON sch.school_number = ae.schoolid
+    ON sch.school_number = s.schoolid
 
 -- Parent 1
 LEFT JOIN (
     SELECT * FROM ranked_contacts WHERE rn = 1
 ) rc1
-    ON rc1.studentid = ae.studentid
+    ON rc1.dcid = s.dcid
 
 -- Parent 2
 LEFT JOIN (
     SELECT * FROM ranked_contacts WHERE rn = 2
 ) rc2
-    ON rc2.studentid = ae.studentid
+    ON rc2.dcid = s.dcid
 
+WHERE s.enroll_status = 0
+    AND s.grade_level BETWEEN -1 AND 2
+    AND s.schoolid NOT IN ('777777','888888')
+    AND s.EXITCODE IS NULL
 ORDER BY s.last_name;
