@@ -17,6 +17,47 @@ WITH race_cte AS (
   GROUP BY STUDENTID
 ),
 
+/* Student lunch program information */
+lunch_program_cte AS (
+    SELECT
+        STUDENTSDCID,
+        MIN(PROGRAMCODE) AS LUNCH_PROGRAM_CODE
+    FROM S_CA_STU_CALPADSPROGRAMS_C
+    WHERE PROGRAMCODE IN ('181', '182') -- '181' is Free Meal, '182' is Reduced Price Meal
+    GROUP BY STUDENTSDCID
+),
+
+/* Ensure unique record from S_CA_STU_X */
+demographics_cte AS (
+    SELECT
+        STUDENTSDCID,
+        BIRTHCOUNTRY
+    FROM (
+        SELECT
+            STUDENTSDCID,
+            BIRTHCOUNTRY,
+            -- Sorting arbitrarily to ensure a single, unique row is selected per student
+            ROW_NUMBER() OVER (PARTITION BY STUDENTSDCID ORDER BY STUDENTSDCID) AS rn
+        FROM S_CA_STU_X
+    )
+    WHERE rn = 1
+),
+
+/* Ensure unique record from S_CA_STU_ELA_C  */
+ela_cte AS (
+    SELECT
+        STUDENTSDCID,
+        PRIMARYLANGUAGE
+    FROM (
+        SELECT
+            STUDENTSDCID,
+            PRIMARYLANGUAGE,
+            ROW_NUMBER() OVER (PARTITION BY STUDENTSDCID ORDER BY PRIMARYLANGUAGE) AS rn
+        FROM S_CA_STU_ELA_C
+    )
+    WHERE rn = 1
+),
+
 /* Path 1: CC → SECTIONS → TEACHERS */
 teacher_cc AS (
   SELECT
@@ -55,7 +96,7 @@ teacher_by_cn AS (
       se.STUDENTID,
       MIN(
         COALESCE(t2.LASTFIRST, t2.FIRST_NAME || ' ' || t2.LAST_NAME,
-                 pt2.FIRSTNAME || ' ' || pt2.LASTNAME)
+                pt2.FIRSTNAME || ' ' || pt2.LASTNAME)
       ) AS TEACHER_NAME
   FROM PSM_SECTIONENROLLMENT se
   JOIN SECTIONS s
@@ -74,17 +115,18 @@ teacher_by_cn AS (
 )
 
 SELECT
-    e.FIRST_NAME, 
-    e.MIDDLE_NAME, 
-    e.LAST_NAME, 
-    e.STUDENT_NUMBER, 
-    e.STATE_STUDENTNUMBER, 
+    e.FIRST_NAME,
+    e.MIDDLE_NAME,
+    e.LAST_NAME,
+    e.STUDENT_NUMBER,
+    e.STATE_STUDENTNUMBER,
     e.GRADE_LEVEL,
     e.SCHOOLID,
     sch.NAME AS SCHOOL_NAME,
     /* First non-null across three sources */
     COALESCE(tcc.TEACHER_NAME, tpsm.TEACHER_NAME, tcn.TEACHER_NAME) AS TEACHER,
     ela.PRIMARYLANGUAGE,
+    lpc.LUNCH_PROGRAM_CODE AS LUNCH_PROGRAM,
     e.DOB,
     e.GENDER,
     r.RACE1,
@@ -98,18 +140,28 @@ SELECT
     e.ZIP,
     e.HOME_PHONE
 FROM STUDENTS e
-LEFT JOIN race_cte r 
-       ON r.STUDENTID = e.ID
-LEFT JOIN SCHOOLS sch 
-       ON e.SCHOOLID = sch.SCHOOL_NUMBER
-LEFT JOIN S_CA_STU_X dem 
-       ON e.DCID = dem.STUDENTSDCID
-LEFT JOIN S_CA_STU_ELA_C ela
-       ON ela.STUDENTSDCID = e.DCID
-LEFT JOIN teacher_cc   tcc ON tcc.STUDENTID  = e.ID
-LEFT JOIN teacher_psm  tpsm ON tpsm.STUDENTID = e.ID
-LEFT JOIN teacher_by_cn tcn ON tcn.STUDENTID  = e.ID
+LEFT JOIN race_cte r
+        ON r.STUDENTID = e.ID
+LEFT JOIN SCHOOLS sch
+        ON e.SCHOOLID = sch.SCHOOL_NUMBER
+-- Updated joins to use the unique CTEs
+LEFT JOIN demographics_cte dem
+        ON e.DCID = dem.STUDENTSDCID
+LEFT JOIN ela_cte ela
+        ON ela.STUDENTSDCID = e.DCID
+-- Lunch Program
+LEFT JOIN lunch_program_cte lpc
+        ON lpc.STUDENTSDCID = e.DCID
+LEFT JOIN teacher_cc    tcc
+        ON tcc.STUDENTID  = e.ID
+LEFT JOIN teacher_psm  tpsm
+        ON tpsm.STUDENTID = e.ID
+LEFT JOIN teacher_by_cn tcn
+        ON tcn.STUDENTID  = e.ID
+  
 WHERE e.ENROLL_STATUS = 0
-  AND e.GRADE_LEVEL BETWEEN -1 AND 0
-  AND e.SCHOOLID NOT IN ('2','777777','888888')
+  AND e.GRADE_LEVEL BETWEEN -1 AND 2
+  AND e.SCHOOLID NOT IN ('777777','888888', '1', '2', '4168890')
   AND e.EXITCODE IS NULL
+
+ORDER BY SCH.NAME, e.STUDENT_NUMBER ASC;
