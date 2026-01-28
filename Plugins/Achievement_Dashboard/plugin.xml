@@ -2,10 +2,29 @@
 <plugin xmlns="http://plugin.powerschool.pearson.com"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://plugin.powerschool.pearson.com plugin.xsd"
-        name="District Achievement Dashboard"
+        name="Cabrillo Achievement Dashboard"
         version="1.0.0"
-        description="Admin-only testing dashboard for CAASPP Achievement Levels">
-    <publisher name="District Admin Team">
-        <contact email="admin@yourdistrict.org" />
+        description="Admin dashboard for CAASPP Achievement Level analysis.">
+    
+    <publisher name="District IT Team">
+        <contact email="email@district.k12.ca.us" />
     </publisher>
+
+    <access_request>
+        <field table="STUDENTS" field="ENROLL_STATUS" access="ViewOnly" />
+        <field table="STUDENTS" field="SCHOOLID" access="ViewOnly" />
+        <field table="TERMS" field="FIRSTDAY" access="ViewOnly" />
+        <field table="TERMS" field="LASTDAY" access="ViewOnly" />
+        
+        </access_request>
+
+    <links>
+        <link display-text="Achievement Dashboard" 
+              path="admin/achievement_dashboard.html" 
+              title="View Student Achievement Charts">
+            <ui_contexts>
+                <ui_context id="admin.left_nav" />
+            </ui_contexts>
+        </link>
+    </links>
 </plugin>
