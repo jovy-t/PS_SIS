@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://plugin.powerschool.pearson.com" 
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+        xsi:schemaLocation="http://plugin.powerschool.pearson.com plugin.xsd" 
+        name="CUSD - Achievement Metrics Schema" 
+        version="1.0.0" 
+        description="Creates standalone table for assessment aggregate metrics.">
+  <publisher name="Cabrillo Unified School District">
+    <contact email="itinfo@cabrillo.k12.ca.us" />
+  </publisher>
+</plugin>

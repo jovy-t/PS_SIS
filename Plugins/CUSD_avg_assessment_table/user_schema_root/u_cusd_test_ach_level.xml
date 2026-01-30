@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<psExtension xmlns="http://www.powerschool.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.powerschool.com psextension.xsd">
+    <extensionname>u_cusd_test_ach_level</extensionname>
+    <extendedTable type="standalone" 
+                       dbTableName="U_CUSD_TEST_ACH_LEVEL" 
+                       childName="U_CUSD_TEST_ACH_LEVEL" 
+                       comment="Stores aggregated assessment achievement metrics by year and grade.">
+        <field name="academic_year" type="Integer" length="4"/>
+        <field name="yearid" type="Integer" length="10"/>
+        <field name="testid" type="Integer" length="10"/>
+        <field name="test_name" type="String" length="1000"/>
+        <field name="grade_level" type="Integer" length="4"/>
+        <field name="avg_achievement_level" type="Integer" length="10"/>
+    </extendedTable>
+</psExtension>
