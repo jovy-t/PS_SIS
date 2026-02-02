@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Assessment Achievement Metrics</title>
+
+  <!-- required scripts -->
+  ~[wc:commonscripts]
+
+  <!-- Required style sheets -->
+  <link href="/images/css/screen.css" rel="stylesheet" media="screen">
+  <link href="/images/css/print.css" rel="stylesheet" media="print">
+</head>
+
+<body>
+  ~[wc:admin_header_css]
+
+  <!-- breadcrumb start -->
+  Assessment Achievement Metrics
+  <!-- breadcrumb end -->
+
+  ~[wc:admin_navigation_css]
+
+  <h1>Assessment Achievement Metrics</h1>
+
+  <div class="box-round">
+    <h2>Assessment Achievement Metrics</h2>
+
+    <table id="metrics-table" class="grid">
+      <thead>
+        <tr>
+          <th>Academic Year</th>
+          <th>Test Name</th>
+          <th>Grade Level</th>
+          <th>Average Level</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="4">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  ~[wc:admin_footer_css]
+
+  <script>
+  $j(function () {
+
+    $j.ajax({
+      url: "/ws/schema/query/com.cabrillo.achievement.get_levels?pagesize=0",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      dataType: "json",
+
+      success: function (response) {
+
+        var tbody = $j("#metrics-table tbody");
+        tbody.empty();
+
+        if (!response.record || response.record.length === 0) {
+          tbody.append('<tr><td colspan="4">No data found.</td></tr>');
+          return;
+        }
+
+        response.record.forEach(function (v) {
+          var row = $j("<tr></tr>");
+
+          row.append($j("<td></td>").text(v.academic_year));
+          row.append($j("<td></td>").text(v.test_name));
+          row.append($j("<td></td>").text(v.grade_level));
+          row.append($j("<td></td>").text(v.avg_level));
+
+          tbody.append(row);
+        });
+      },
+
+      error: function (xhr) {
+        console.error("PowerQuery error:", xhr.responseText);
+        $j("#metrics-table tbody")
+          .html('<tr><td colspan="4">Error loading data.</td></tr>');
+      }
+    });
+
+  });
+  </script>
+</body>
+</html>
