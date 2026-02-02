@@ -1,0 +1,5 @@
+<permission_mappings>
+  <permission name='/admin/assessment_achievement_metrics.html'>
+    <implies allow="post">/ws/schema/query/com.cabrillo.achievement.get_levels</implies>
+  </permission>
+</permission_mappings>
