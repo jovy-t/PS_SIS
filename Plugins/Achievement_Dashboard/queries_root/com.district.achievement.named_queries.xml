@@ -1,36 +1,45 @@
 <queries>
-    <query name="com.district.achievement.get_levels" coreTable="STUDENTS" summary="Cabrillo Aggregated Achievement Levels">
-        <description>Returns average achievement levels for Cabrillo active students.</description>
+    <query name="com.district.achievement.get_levels" coreTable="STUDENTS" flattened="true">
+        <summary>CUSD - Assessment Achievement Levels</summary>
+        <description>Returns average state test achievement levels by grade and test name.</description>
         <args>
-            <arg name="schoolid" type="primitive" default="~(curschoolid)" description="The school ID to filter by." />
+            <arg name="school_id" type="primitive" required="true" />
         </args>
         <columns>
-            <column column="S_CA_STU_TEST_S.GRADE_LEVEL">t.GRADE_LEVEL</column>
-            <column column="S_CA_TEST_S.NAME">catest.TEST_NAME</column>
-            <column column="AVG_ACH_LEVEL">AVG_ACH_LEVEL</column>
+            <column column="STUDENTS.DCID">academic_year</column>
+            <column column="STUDENTS.ID">yearid</column>
+            <column column="STUDENTS.LASTFIRST">test_name</column>
+            <column column="STUDENTS.GRADE_LEVEL">grade_level</column>
+            <column column="STUDENTS.STUDENT_NUMBER">avg_level</column>
         </columns>
-        <sql>
-            <![CDATA[
+        <sql><![CDATA[
                 SELECT 
-                    t.GRADE_LEVEL,
-                    catest.NAME as TEST_NAME,
-                    ROUND(AVG(TO_NUMBER(s.VALUE DEFAULT NULL ON CONVERSION ERROR)), 2) as AVG_ACH_LEVEL
-                FROM S_CA_STU_TEST_S t
-                JOIN S_CA_STU_TESTSCORE_C s ON t.ID = s.S_CA_STU_TEST_SID
-                JOIN S_CA_TEST_S catest ON t.TESTID = catest.ID
-                JOIN S_CA_TESTSCORE_C score_def ON s.TESTSCOREID = score_def.ID
-                JOIN STUDENTS stu ON t.STUDENTID = stu.ID
-                WHERE stu.ENROLL_STATUS = 0
-                  AND s.VALUE IS NOT NULL
-                  AND score_def.DESCRIPTION = 'Achievement Level'
-                  AND t.TERMID BETWEEN 
-                        (SELECT (FLOOR(MAX(ID)/100)*100) - 100 FROM TERMS WHERE FIRSTDAY <= SYSDATE AND LASTDAY >= SYSDATE)
-                        AND 
-                        (SELECT (FLOOR(MAX(ID)/100)*100) - 1 FROM TERMS WHERE FIRSTDAY <= SYSDATE AND LASTDAY >= SYSDATE)
-                  AND (t.SCHOOLID = :schoolid OR :schoolid = 0)
-                GROUP BY t.GRADE_LEVEL, catest.NAME
-                ORDER BY catest.NAME, t.GRADE_LEVEL
-            ]]>
-        </sql>
+                academic_year,
+                yearid,
+                test_name,
+                grade_level,
+                avg_level
+            FROM (
+                SELECT 
+                    (FLOOR(t.termid / 100) + 1991) AS academic_year,
+                    (FLOOR(t.termid / 100) * 100) AS yearid,
+                    catest.name AS test_name,
+                    t.grade_level,
+                    ROUND(AVG(CAST(s.value AS NUMBER)), 2) AS avg_level
+                FROM s_ca_stu_test_s t
+                JOIN s_ca_stu_testscore_c s ON t.id = s.s_ca_stu_test_sid
+                JOIN s_ca_test_s catest ON t.testid = catest.id
+                JOIN s_ca_testscore_c score_def ON s.testscoreid = score_def.id
+                JOIN students stu ON t.studentid = stu.id
+                WHERE stu.enroll_status = 0
+                  AND s.value IS NOT NULL
+                  AND score_def.description = 'Achievement Level'
+                GROUP BY 
+                    FLOOR(t.termid / 100), 
+                    catest.name, 
+                    t.grade_level
+            )
+            ORDER BY yearid DESC, test_name ASC, grade_level ASC
+            ]]></sql>
     </query>
 </queries>
