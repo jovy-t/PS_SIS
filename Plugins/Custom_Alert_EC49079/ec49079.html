@@ -1,0 +1,61 @@
+~[tlist_sql;
+/* Used DISTINCT to ensure each student only triggers ONE alert 
+   even if they have multiple qualifying incidents in the 3-year window.
+*/
+SELECT DISTINCT
+    students.id,
+    students.first_name
+FROM ~[wc:aet_customalerts_students] students
+JOIN incident_person_role ipr ON students.id = ipr.studentid
+JOIN incident inc ON inc.incident_id = ipr.incident_id
+WHERE inc.incident_ts >= ADD_MONTHS(SYSDATE, -36)
+  
+  /* FILTER 1: ROLE VALIDATION
+     EC 49079 applies to the perpetrator. We ensure the student is 
+     linked to the incident specifically as an 'Offender'.
+  */
+  AND ipr.role_incident_detail_id IN (
+      SELECT id1.incident_detail_id 
+      FROM incident_detail id1 
+      JOIN incident_lu_code ilc1 ON id1.lu_code_id = ilc1.lu_code_id 
+      WHERE ilc1.incident_category LIKE 'Offender%'
+  )
+
+  /* FILTER 2: ACTION VALIDATION (LEGAL THRESHOLD)
+     The law requires notification for acts that are "grounds for suspension/expulsion."
+     By requiring code (100) or (200), we verify the incident reached that threshold.
+  */
+  AND inc.incident_id IN (
+      SELECT id2.incident_id 
+      FROM incident_detail id2 
+      JOIN incident_lu_code ilc2 ON id2.lu_code_id = ilc2.lu_code_id 
+      WHERE ilc2.code_type = 'actioncode' 
+      AND (ilc2.incident_category LIKE '(100)%' OR ilc2.incident_category LIKE '(200)%')
+  )
+
+  /* FILTER 3: BEHAVIOR EXCLUSION
+     To prevent "over-alerting," we exclude behaviors that are typically 
+     considered minor or do not fall under the strict 49079 reporting mandate.
+  */
+  AND inc.incident_id NOT IN (
+      SELECT id3.incident_id 
+      FROM incident_detail id3 
+      JOIN incident_lu_code ilc3 ON id3.lu_code_id = ilc3.lu_code_id 
+      WHERE ilc3.code_type = 'behaviorcode' 
+      AND (
+          ilc3.incident_category LIKE '(511)%' OR -- Defiance
+          ilc3.incident_category LIKE '(300)%' OR -- Tobacco
+          ilc3.incident_category LIKE '(510)%' OR -- Profanity
+          ilc3.incident_category LIKE 'Minor Incident%' OR 
+          ilc3.incident_category LIKE 'Award%'
+      )
+  )
+;]
+/* OUTPUT FORMAT:
+   The MBA Plugin requires a JSON-like string.
+   ~(id) = Key
+   "Text" = The Alert Message (HTML allowed)
+   The semicolon (;) in the SELECT must match the ~(column) tags here.
+*/
+"~(id)":"<h3>Education Code 49079 Notification</h3><p>This student (~(first_name;js)) has, within the past three years, engaged in conduct requiring disclosure under California Education Code 49079.</p><p>This information is confidential. Please contact site administration with questions.</p>",
+[/tlist_sql]
