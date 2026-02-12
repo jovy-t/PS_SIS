@@ -1,6 +1,6 @@
 # PowerSchool Exit Code Validation
 
-This repository contains a jQuery customization for PowerSchool that ensures data integrity when students are transferred out. Specifically, it enforces the selection of a **School Completion Status** when a specific **Exit Code** is chosen.
+This folder contains a jQuery customization for PowerSchool that ensures data integrity when students are transferred out. Specifically, it enforces the selection of a **School Completion Status** when a specific **Exit Code** is chosen.
 
 ---
 
