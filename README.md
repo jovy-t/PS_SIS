@@ -1,29 +1,29 @@
-# PowerSchool SQL Query Repository
+# PowerSchool SQL & Analytics Repository
 
-## 📊 PowerSchool SQL Queries
+## 📊 Project Overview
+This repository contains a curated collection of SQL queries and analytical scripts designed to extract, analyze, and report on student data from the PowerSchool SIS. These tools support CALPADS compliance, SMCOE requirements, and district-level data visualization.
 
-This repository contains a curated collection of SQL queries designed to extract, analyze, and report on student data from the PowerSchool SIS. These queries are tailored to support CALPADS reporting, student program tracking, district reporting, and other custom needs.
-
-> ⚠️ **Note:** These queries are specific to our district's schema and requirements and may require modification to run in other environments.
+> ⚠️ **IMPORTANT:** Never commit files containing Google Drive links, database credentials, or PII (Personally Identifiable Information). Ensure all sensitive files are listed in the `.gitignore`.
 
 ---
 
 ## 🗂 Folder Structure
 
 ```text
-/powerschool-sql-queries/
+/PS_SIS/
 │
-├── reports/                # All report-based SQL queries
-│   ├── smcoe/              # Reports required by San Mateo County Office of Education (SMCOE)
+├── reports/                   # Reporting and Data Extraction
+│   ├── smcoe/                 # San Mateo County Office of Education (SMCOE) reports
 │   │   ├── big_lift.sql
 │   │   └── brigance.sql
-│   └── calpads/            # CALPADS compliance or validation reports (planned)
+│   ├── calpads/               # CALPADS compliance/validation (planned)
+│   └── Student_Analytics/     # JS-based data processing & visualization
+│       └── LTEL.js            # Long Term English Learner analysis
 │
-├── utilities/             # Common joins, views, or helper queries (planned)
+├── utilities/                 # Common joins and helper queries
 │
-├── docs/                  # Documentation for schema, data definitions, and business rules
+├── docs/                      # Schema documentation & business rules
 │   └── powerschool-schema-overview.md
 │
-├── .gitignore             # Ignore config files or secure data
-├── README.md              # Project overview
-└── .env (optional)        # DB credentials (DO NOT COMMIT)
+├── .gitignore                 # Prevents sensitive files from being uploaded
+└── README.md                  # Project overview
