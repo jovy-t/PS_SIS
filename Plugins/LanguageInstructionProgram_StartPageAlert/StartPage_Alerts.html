@@ -1,0 +1,42 @@
+<!-- FILE: wildcards/d63_start_page_alerts.txt -->
+
+<div>
+    <!-- POWERSCHOOL WILDCARD LOGIC:
+      ~[pref:XXXX]: Tells PowerSchool to go look at the "Settings Page" values you saved.
+      ~[wc:XXXX]: A "Wildcard Call" that tells the Start Page to go run the code inside your .sql file.
+    -->
+    ~[if#HIDEELNOLIP.~[pref:d63spahideelnolip]=1][else#HIDEELNOLIP]
+    ~[if#STUSEC.security.inrole=~[pref:d63spaelnolipgroups]]
+    ~[if#STUSCHOOL.~(f.in;value=~(curschoolid);in=~[pref:d63spaelnolipschools])=1][else#STUSCHOOL]
+        
+        <p id="elnolip"><strong>EL students missing LIP Record:</strong><br>
+        
+        <!-- Runs the SQL query.
+            For every student it finds, it creates a new line of text using the 
+            variables like ~(DCID) and ~(NAME). -->
+        ~[tlist_sql;
+            SELECT 
+                EL.DCID, 
+                EL.LASTFIRST, 
+                EL.STUDENT_NUMBER, 
+                EL.SCHOOLABBREVIATION, 
+                EL.GRADE_LEVEL
+            FROM 
+                ~[wc:d63_spa/el_no_lip] EL
+            ORDER BY 
+                EL.LASTFIRST
+        ;]
+
+            <!-- The columns in the SELECT line above (DCID, LASTFIRST, etc.) are turned into 
+                 placeholders like ~(NAME). These placeholders are used to build the visual list 
+                 of students with clickable links. -->
+
+            <a class="elnolip-students" href="/admin/students/home.html?frn=001~(DCID)">~(NAME)</a> 
+            Student No: ~(STUDENT_NUMBER) (~(SCHOOLABBREVIATION)) Grade: ~(GRADE_LEVEL)<br>
+        [/tlist_sql]
+        </p>
+
+    [/if#STUSCHOOL]
+    [/if#STUSEC]
+    [/if#HIDEELNOLIP]
+</div>

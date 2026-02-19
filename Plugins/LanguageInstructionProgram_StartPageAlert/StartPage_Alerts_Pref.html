@@ -1,0 +1,43 @@
+<!-- FILE: Admin/Ditrict/StartPage_Alerts_Pref.html -->
+
+<script>
+    $j(function() {
+    /* THE INITIALIZATION BLOCK:
+       When loading the page, PowerSchool doesn't automatically know which checkboxes 
+       should be "checked" based on the text in the hidden boxes. This script fixes that.
+    */
+    
+        // 1. Fetch the saved text (e.g., "1,5,9") and split it into a list of IDs.
+        const init_student_elnolip_groups = $j( '.student-elnolip-group-pref' ).val().split( ',' );
+        const init_student_elnolip_schools = $j( '.student-elnolip-school-pref' ).val().split( ',' );
+
+        // 2. Loop through that list and tell the browser: "Find the checkbox with this ID and check it."
+        init_student_elnolip_groups.forEach( e => $j( '#student-elnolip-group-' + e ).prop( 'checked', true ) );
+        init_student_elnolip_schools.forEach( e => $j( '#student-elnolip-school-' + e ).prop( 'checked', true ) );
+    });
+</script>
+
+<table class="grid">
+    <thead>
+        <tr><th class="bold" colspan=2>EL Status but no LIP Record (Custom Alert)</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><b>Security Group Access</b></td>
+            <td>
+                <input type="text" class="student-elnolip-group-pref" name="[pref]d63spaelnolipgroups" value=""/>
+                <h4 class="toggle collapsed">Click to See Groups</h4>
+                <table class="grid">
+                    <!-- This creates a dynamic list of checkboxes. It asks PowerSchool for the 
+                       current list of Security Groups and builds the table. -->
+                    ~[tlist_sql;select id, name from gen where upper(cat)='GROUPS' order by id;]
+                    <tr>
+                        <td><input id="student-elnolip-group-~(ID;t)" type="checkbox" value="~(ID;t)" class="student-elnolip-group pref-checkbox"></td>
+                        <td>~(ID;t)</td><td>~(Name;t)</td>
+                    </tr>
+                    [/tlist_sql]
+                </table>
+            </td>
+        </tr>
+    </tbody>
+</table>
