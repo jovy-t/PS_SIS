@@ -1,9 +1,9 @@
 # D63 Start Page Alerts - EL Customization
-This repository contains the custom modifications added to the **D63 Start Page Alerts** plugin to identify students with EL Status but no active LIP record.
+This folder contains the custom modifications added to the **D63 Start Page Alerts** plugin to identify students with EL Status but no active LIP record.
 
 ### Modification Index
-1.  **[EL_No_LIP.sql](./EL_No_LIP.sql)**: The core database logic. *
-**Location:** `web_root/wildcards/d63_spa/el_no_lip.txt`
+1.  **[EL_No_LIP.sql](./EL_No_LIP.sql)**: The core database logic. 
+* **Location:** `web_root/wildcards/d63_spa/el_no_lip.txt`
 * **Action:** Create this file from scratch.
 2.  **[StartPage_Alerts.txt](./StartPage_Alerts.txt)**: Instructions for the main Start Page alert box and student list.
 * **Location:** `web_root/wildcards/d63_start_page_alerts.txt`
