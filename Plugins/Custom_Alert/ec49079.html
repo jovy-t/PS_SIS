@@ -1,3 +1,11 @@
+/*  SQL query that checks for students who have been involved in incidents that meet the criteria outlined in Education Code 49079, 
+    which requires notification if a student has engaged in acts that are grounds for suspension or expulsion within the past 
+    three years. The query includes filters to ensure that only relevant incidents are considered, and it outputs a JSON-like 
+    string that can be used to display the alert on the student profile page. 
+*/
+
+## fileapath: /admin/alerts/user/triggers/ec49079.html
+
 ~[tlist_sql;
 /* Used DISTINCT to ensure each student only triggers ONE alert 
    even if they have multiple qualifying incidents in the 3-year window.
@@ -57,5 +65,5 @@ WHERE inc.incident_ts >= ADD_MONTHS(SYSDATE, -36)
    "Text" = The Alert Message (HTML allowed)
    The semicolon (;) in the SELECT must match the ~(column) tags here.
 */
-"~(id)":"<h3>Education Code 49079 Notification</h3><p>This student (~(first_name;js)) has, within the past three years, engaged in conduct requiring disclosure under California Education Code 49079.</p><p>This information is confidential. Please contact site administration with questions.</p>",
+"~(id)":"<h3>Education Code 49079 Notification</h3><p>This pupil has engaged in, or is suspected to have engaged in, any of the acts that are grounds for suspension and/or expulsion (Ed Code 48900) from the previous three years.</p><p>The information shall be received in confidence. Please contact site administration with questions.</p>",
 [/tlist_sql]

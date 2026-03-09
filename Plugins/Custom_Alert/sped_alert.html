@@ -1,0 +1,113 @@
+<!-- 
+    filepath: admin/alerts/user/disability_alert.html
+
+    This custome popup alert using the MBA Alert Creator plugin
+-->
+
+<div class="box-round" id="alert-iep~(studentfrn)">
+
+  <!-- Alert Icon -->
+  <img class="alertImage" 
+       src="/images/capacks/pack1/spaceshuttle.png" 
+       width="25" 
+       height="25" />
+
+  <div class="alertContent">
+
+    <!-- Student Name Header -->
+    <p class="alertHeader">~(studentname)</p>
+
+    <!-- Section Divider -->
+    <div style="margin:15px 0; border-top:1px solid #ddd;"></div>
+
+    <!-- ========================================================= -->
+    <!-- IEP STATUS SECTION                                        -->
+    <!-- ========================================================= -->
+
+    <h3>IEP & Disability Information</h3>
+
+    <!-- 
+        The PowerQuery below checks whether an IEP document exists
+        for the student.
+
+        It returns:
+        0  → Active IEP on file
+        1  → No IEP uploaded
+
+        The PowerQuery connects to a custom district data source.
+    -->
+
+    ~[if#hasIEP.~(*powerquery;
+        query=cabrillo.powerschool.com.customCUSD.spedAlert;
+        fields=b;
+        arg.coretabledcid=~(studentrn))=0]
+
+        <!-- Student HAS an IEP -->
+        <p style="color:green; font-weight:bold;">
+          Active IEP on File
+        </p>
+
+        <p>
+          <a href="~(*powerquery;
+              query=cabrillo.powerschool.com.customCUSD.spedAlert;
+              fields=a;
+              arg.coretabledcid=~(studentrn))"
+             target="_blank">
+            View IEP at a Glance
+          </a>
+        </p>
+
+    [else#hasIEP]
+
+        <!-- Student does NOT have an uploaded IEP -->
+        <p style="color:#b00000;">
+          No IEP Uploaded
+        </p>
+
+    [/if#hasIEP]
+
+    <!-- Section Divider -->
+    <div style="margin:15px 0; border-top:1px solid #ddd;"></div>
+
+    <!-- ========================================================= -->
+    <!-- PRIMARY DISABILITY SECTION                                -->
+    <!-- ========================================================= -->
+
+    <h3>Primary Disability</h3>
+
+    <!-- 
+        The query looks up the student's PrimaryDisability value
+        from the CA state extension table (S_CA_STU_X).
+
+        Convert the stored value code into readable text using a CASE statement.
+    -->
+
+    ~[tlist_sql;
+      SELECT
+        CASE TRIM(PrimaryDisability)
+          WHEN '210' THEN 'Intellectual Disability'
+          WHEN '220' THEN 'Hard of Hearing'
+          WHEN '230' THEN 'Deafness/Hearing Impairment'
+          WHEN '240' THEN 'Speech/Language Impairment'
+          WHEN '250' THEN 'Visual Impairment'
+          WHEN '260' THEN 'Emotional Disturbance'
+          WHEN '270' THEN 'Orthopedic Impairment'
+          WHEN '280' THEN 'Other Health Impairment'
+          WHEN '281' THEN 'Established Medical Disability'
+          WHEN '290' THEN 'Specific Learning Disability'
+          WHEN '300' THEN 'Deaf/Blindness'
+          WHEN '310' THEN 'Multiple Disabilities'
+          WHEN '320' THEN 'Autism'
+          WHEN '330' THEN 'Traumatic Brain Injury'
+          ELSE 'Unknown'
+        END AS disability
+      FROM S_CA_STU_X
+      WHERE STUDENTSDCID = ~(curstudid)
+    ;]
+
+      <p>~(disability)</p>
+
+    [/tlist_sql]
+
+  </div>
+</div>
