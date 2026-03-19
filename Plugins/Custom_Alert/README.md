@@ -1,13 +1,25 @@
-# California EC 49079 - Student Incident Alert
+# 🔔 Custom Popup Alerts (MBA Alert Creator)
 
-## Project Overview
-This project implements a custom PowerSchool alert based on **California Education Code 49079**. It notifies teachers when a student has engaged in (or is suspected of) conduct that is grounds for suspension or expulsion (EC 48900) within the last three years.
+This folder contains custom modifications and SQL logic for the **MBA Alert Creator** plugin within the PowerSchool SIS. These alerts are designed to surface critical student information directly to teachers and admin staff via the student header.
 
-## Technical Architecture & Constraints
+---
+
+## 🚀 Alert Catalog
+
+| Alert Name | Components | Description | Status |
+| :--- | :--- | :--- | :--- |
+| **CA EC 49079 - Student Incident** | [Display](./ec49079_alert.html) / [Query](./ec49079.html) | Notifies staff if a student has been suspended or expelled (EC 48900) within the last 3 years. | ✅ Production |
+| **LIP: Dual-Language Immersion** | [Query](./DualImmersion.html) | Alerts staff if a student has an active or historical LIP code of *301*. Ensures continuity of course content. | ✅ Production |
+| **Special Education (IEP)** | [Display](./sped_alert.html) | Links IEP documents directly in the alert popup using a custom PowerQuery. | ✅ Production |
+| **Primary Disability Mapping** | [Query](./disability_alert_main.html) | Cross-references `S_CA_STU_CALPADSPROGRAMS_C` and `S_CA_STU_X` for disability codes. | 🚧 WIP |
+
+---
+
+## 🛠 Technical Architecture & Constraints
 
 ### 1. The Use of `~[tlist_sql]`
 In modern PowerSchool development, `~[tlist_sql]` is **strongly deprecated**. It executes SQL directly on the page, which presents security risks (SQL injection) and performance bottlenecks.
-* **Why it is used here:** The **MBA Alert Creator** plugin (a common third-party tool) requires a `.html` trigger file containing this specific tag to determine which students should display an alert. 
+* **Why it is used here:** The **MBA Alert Creator** plugin requires a `.html` trigger file containing this specific tag to determine which students should display an alert. 
 * **The Alternative:** For any development outside of this specific plugin, `~[datatable]` or `PowerQueries` (JSON-based) should be used instead.
 
 ### 2. Avoiding `WITH` (CTE) and `EXISTS`
