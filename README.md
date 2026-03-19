@@ -1,29 +1,32 @@
-# PowerSchool SQL & Analytics Repository
+# 📊 PowerSchool SQL & Analytics Repository
 
-## 📊 Project Overview
-This repository contains a curated collection of SQL queries and analytical scripts designed to extract, analyze, and report on student data from the PowerSchool SIS. These tools support CALPADS compliance, SMCOE requirements, and district-level data visualization.
-
-> ⚠️ **IMPORTANT:** Never commit files containing Google Drive links, database credentials, or PII (Personally Identifiable Information). Ensure all sensitive files are listed in the `.gitignore`.
+## 🚀 Project Overview
+This repository contains a curated collection of SQL queries, analytical scripts, and PowerSchool customizations designed to extract, analyze, and report on student data. These tools support CALPADS compliance, SMCOE requirements, and district-level data visualization.
 
 ---
 
 ## 🗂 Folder Structure
 
+| Section | Description |
+| :--- | :--- |
+| 🔌 **[Plugins](./Plugins)** | Customizations for MBA Alert Creator and D63 Start Page Alerts. |
+| 📝 **[Reports](./reports)** | SQL and JS scripts for SMCOE, CALPADS, and Student Analytics. |
+| 🛠 **[Utilities](./utilities)** | Common SQL joins, views, and helper scripts. |
+| 📖 **[Docs](./docs)** | PowerSchool schema documentation and business rules. |
+
 ```text
 /PS_SIS/
 │
+├── Plugins/                   # PowerSchool Plugin Customizations
+│   ├── Custom_Alert/          # MBA Alert Creator modifications
+│   └── StartPageAlert/        # D63 Start Page Alert enhancements
+│
 ├── reports/                   # Reporting and Data Extraction
-│   ├── smcoe/                 # San Mateo County Office of Education (SMCOE) reports
-│   │   ├── big_lift.sql
-│   │   └── brigance.sql
-│   ├── calpads/               # CALPADS compliance/validation (planned)
-│   └── Student_Analytics/     # JS-based data processing & visualization
-│       └── LTEL.js            # Long Term English Learner analysis
+│   ├── smcoe/                 # San Mateo County (SMCOE) reports
+│   ├── calpads/               # CALPADS compliance/validation
+│   └── Student_Analytics/     # JS-based data processing (LTEL.js)
 │
 ├── utilities/                 # Common joins and helper queries
-│
 ├── docs/                      # Schema documentation & business rules
-│   └── powerschool-schema-overview.md
-│
 ├── .gitignore                 # Prevents sensitive files from being uploaded
 └── README.md                  # Project overview
