@@ -1,0 +1,75 @@
+/* LOCATION: admin/district/d63_spa_pref.html
+
+   PURPOSE:
+   Initializes plugin preferences for Start Page Alerts.
+
+   This script:
+   • Reads saved preference values
+   • Automatically checks the correct checkboxes when the page loads
+   • Converts checkbox selections into comma-separated lists
+     when the preferences form is saved
+
+   These values are stored in PowerSchool plugin preferences
+   and used by wildcard SQL queries and alert logic.
+*/
+
+$j(function() {
+
+    /* =========================================================
+       EO DIM ALERT INITIALIZATION
+       =========================================================
+       When the settings page loads, PowerSchool stores the
+       selected security group IDs as a comma-separated string.
+
+       This block converts that string back into checked boxes.
+    */
+
+    const init_student_eodim_groups =
+        $j('.student-eodim-group-pref').val().split(',');
+
+    const init_student_eodim_schools =
+        $j('.student-eodim-school-pref').val().split(',');
+
+    init_student_eodim_groups.forEach(e =>
+        $j('#student-eodim-group-' + e).prop('checked', true)
+    );
+
+    init_student_eodim_schools.forEach(e =>
+        $j('#student-eodim-school-' + e).prop('checked', true)
+    );
+
+
+    /* =========================================================
+       SAVE PREFERENCES
+       =========================================================
+       When the preferences form is submitted, gather all
+       selected checkboxes and store them in hidden text fields
+       as comma-separated lists.
+    */
+
+    $j('#prefsForm').submit(function() {
+
+        /* Collect selected security groups */
+        var eodim_groups = [];
+
+        $j('.student-eodim-group:checked').each(function() {
+            eodim_groups.push($j(this).val());
+        });
+
+        $j('.student-eodim-group-pref')
+            .val(eodim_groups.join(','));
+
+
+        /* Collect selected schools (optional filtering) */
+        var eodim_schools = [];
+
+        $j('.student-eodim-school:checked').each(function() {
+            eodim_schools.push($j(this).val());
+        });
+
+        $j('.student-eodim-school-pref')
+            .val(eodim_schools.join(','));
+
+    });
+
+});

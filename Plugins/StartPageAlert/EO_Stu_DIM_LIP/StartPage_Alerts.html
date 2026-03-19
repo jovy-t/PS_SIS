@@ -1,0 +1,69 @@
+<!--
+LOCATION: web_root/wildcards/d63_start_page_alerts.txt
+
+PURPOSE:
+Displays custom alerts on the PowerSchool Start Page.
+
+This section displays an alert when students:
+• Have EO language status
+• Are enrolled in DIM courses
+
+PowerSchool Wildcards Used:
+~[pref:XXXX]     → retrieves plugin preference values
+~[wc:XXXX]       → executes a wildcard SQL file
+~[tlist_sql]     → loops through query results
+
+RELATED FILES:
+- wildcards/d63_spa/eo_dim.txt
+- scripts/StartPage_Alerts.js
+- admin/d63_spa/selection.json
+-->
+
+~[if#STUSEC.security.inrole=~[pref:d63spaeodimgroups]]
+
+<p id="eodim">
+
+<strong>
+EO Students in DIM Courses
+~[if#newlookselect.is.new.look.enabled]
+(<a href="javascript:buildsel('eo_dim','student')">Make Current Selection</a>)
+[/if#newlookselect]:
+</strong><br>
+
+<!--
+Runs the SQL wildcard query.
+
+For each student returned from the query,
+PowerSchool creates a clickable student link.
+-->
+
+~[tlist_sql;
+SELECT
+    EO.DCID,
+    EO.LASTFIRST,
+    EO.STUDENT_NUMBER,
+    EO.SCHOOLABBREVIATION,
+    EO.GRADE_LEVEL,
+    EO.COURSE_NUMBER
+FROM
+    ~[wc:d63_spa/eo_dim] EO
+ORDER BY
+    EO.LASTFIRST
+;]
+
+<a class="eodim-students"
+href="/admin/students/home.html?frn=001~(DCID)">
+~(LASTFIRST)
+</a>
+
+Student No: ~(STUDENT_NUMBER)
+(~(SCHOOLABBREVIATION))
+Grade ~(GRADE_LEVEL)
+Course ~(COURSE_NUMBER)
+<br>
+
+[/tlist_sql]
+
+</p>
+
+[/if#STUSEC]
