@@ -30,38 +30,38 @@ SELECT DISTINCT
 
 FROM students s
 
-/* Join to EL status table */
 JOIN S_CA_STU_ELA_C ela
     ON ela.studentsdcid = s.dcid
 
-/* Join to current course enrollment */
 JOIN cc
     ON cc.studentid = s.id
 
-/* School lookup for display */
 LEFT JOIN schools sch
     ON sch.school_number = s.schoolid
 
 WHERE ~(curschoolid) IN (s.schoolid, s.summerschoolid, 0)
 
-    /* Only actively enrolled students */
     AND s.enroll_status = 0
-
-    /* Student must have EO status */
     AND ela.elastatus = 'EO'
-
-    /* Only courses beginning with DIM */
-    AND cc.course_number LIKE 'DIM%'
-
-    /* Ensure student is still enrolled in the section */
     AND cc.dateleft >= CURRENT_DATE
 
-    /* Ensure the course belongs to the current term */
+    /* DIM courses */
+    AND cc.course_number LIKE 'DIM%'
+
+    /* current term */
     AND cc.termid IN (
         SELECT id
         FROM terms
         WHERE schoolid = s.schoolid
         AND firstday <= CURRENT_DATE
         AND lastday >= CURRENT_DATE
+    )
+
+    /* EXCLUDE students already in Dual Language Immersion (Program 301) */
+    AND s.dcid NOT IN (
+        SELECT studentsdcid
+        FROM S_CA_STU_CALPADSPROGRAMS_C
+        WHERE PROGRAMCODE = '301'
+        AND (ENDDATE IS NULL OR ENDDATE > CURRENT_DATE)
     )
 )
