@@ -16,14 +16,54 @@
     <!-- Student Name Header -->
     <p class="alertHeader">~(studentname)</p>
 
+    <!-- ========================================================= -->
+    <!-- PRIMARY DISABILITY SECTION                                -->
+    <!-- ========================================================= -->
+
+    <!-- 
+        The query looks up the student's PrimaryDisability value
+        from the CA state extension table (S_CA_STU_X).
+
+        Convert the stored value code into readable text.
+    -->
+    <table class="linkDescList">
+        ~[tlist_sql;
+          SELECT
+            'Primary Disability' AS field_label,
+            m.description
+          FROM S_CA_STU_X x
+          JOIN (
+            SELECT '210' AS code, 'Intellectual Disability' AS description FROM dual
+            UNION ALL SELECT '220', 'Hard of Hearing' FROM dual
+            UNION ALL SELECT '230', 'Deafness/Hearing Impairment' FROM dual
+            UNION ALL SELECT '240', 'Speech/Language Impairment' FROM dual
+            UNION ALL SELECT '250', 'Visual Impairment' FROM dual
+            UNION ALL SELECT '260', 'Emotional Disturbance' FROM dual
+            UNION ALL SELECT '270', 'Orthopedic Impairment' FROM dual
+            UNION ALL SELECT '280', 'Other Health Impairment' FROM dual
+            UNION ALL SELECT '281', 'Established Medical Disability' FROM dual
+            UNION ALL SELECT '290', 'Specific Learning Disability' FROM dual
+            UNION ALL SELECT '300', 'Deaf/Blindness' FROM dual
+            UNION ALL SELECT '310', 'Multiple Disabilities' FROM dual
+            UNION ALL SELECT '320', 'Autism' FROM dual
+            UNION ALL SELECT '330', 'Traumatic Brain Injury' FROM dual
+          ) m
+            ON m.code = TRIM(x.PrimaryDisability)
+          WHERE x.STUDENTSDCID = ~(studentrn)
+        ;]
+          <tr>
+            <td style="white-space:nowrap;">~(field_label)</td>
+            <td style="white-space:nowrap;">~(description)</td>
+          </tr>
+        [/tlist_sql]
+    </table>
+
     <!-- Section Divider -->
     <div style="margin:15px 0; border-top:1px solid #ddd;"></div>
 
     <!-- ========================================================= -->
     <!-- IEP STATUS SECTION                                        -->
     <!-- ========================================================= -->
-
-    <h3>IEP & Disability Information</h3>
 
     <!-- 
         The PowerQuery below checks whether an IEP document exists
@@ -42,71 +82,22 @@
         arg.coretabledcid=~(studentrn))=0]
 
         <!-- Student HAS an IEP -->
-        <p style="color:green; font-weight:bold;">
-          Active IEP on File
-        </p>
-
         <p>
           <a href="~(*powerquery;
               query=cabrillo.powerschool.com.customCUSD.spedAlert;
               fields=a;
               arg.coretabledcid=~(studentrn))"
              target="_blank">
-            View IEP at a Glance
+            View Active IEP at a Glance
           </a>
         </p>
-
     [else#hasIEP]
 
         <!-- Student does NOT have an uploaded IEP -->
         <p style="color:#b00000;">
           No IEP Uploaded
         </p>
-
     [/if#hasIEP]
-
-    <!-- Section Divider -->
-    <div style="margin:15px 0; border-top:1px solid #ddd;"></div>
-
-    <!-- ========================================================= -->
-    <!-- PRIMARY DISABILITY SECTION                                -->
-    <!-- ========================================================= -->
-
-    <h3>Primary Disability</h3>
-
-    <!-- 
-        The query looks up the student's PrimaryDisability value
-        from the CA state extension table (S_CA_STU_X).
-
-        Convert the stored value code into readable text using a CASE statement.
-    -->
-
-    ~[tlist_sql;
-      SELECT
-        CASE TRIM(PrimaryDisability)
-          WHEN '210' THEN 'Intellectual Disability'
-          WHEN '220' THEN 'Hard of Hearing'
-          WHEN '230' THEN 'Deafness/Hearing Impairment'
-          WHEN '240' THEN 'Speech/Language Impairment'
-          WHEN '250' THEN 'Visual Impairment'
-          WHEN '260' THEN 'Emotional Disturbance'
-          WHEN '270' THEN 'Orthopedic Impairment'
-          WHEN '280' THEN 'Other Health Impairment'
-          WHEN '281' THEN 'Established Medical Disability'
-          WHEN '290' THEN 'Specific Learning Disability'
-          WHEN '300' THEN 'Deaf/Blindness'
-          WHEN '310' THEN 'Multiple Disabilities'
-          WHEN '320' THEN 'Autism'
-          WHEN '330' THEN 'Traumatic Brain Injury'
-          ELSE 'Unknown'
-        END AS disability
-      FROM S_CA_STU_X
-      WHERE STUDENTSDCID = ~(curstudid)
-    ;]
-
-      <p>~(disability)</p>
-
-    [/tlist_sql]
 
   </div>
 </div>
