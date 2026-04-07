@@ -1,3 +1,5 @@
+# PowerQueries for CCGI Files
+
 <queries>
   <query
       name="com.cabrillo.powerschool.ccgi.student_file"
