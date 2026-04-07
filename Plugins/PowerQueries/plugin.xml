@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://plugin.powerschool.pearson.com"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://plugin.powerschool.pearson.com plugin.xsd"
+        name="CUSD - PowerQueries CCGI Files"
+        version="1.0.1"
+        description="PowerQueries for CCGI Files.">
+    <oauth></oauth>
+    <access_request>
+        <!-- STUDENTS -->
+        <field table="STUDENTS" field="ID" access="ViewOnly" />
+        <field table="STUDENTS" field="DCID" access="ViewOnly" />
+        <field table="STUDENTS" field="SCHOOLID" access="ViewOnly" />
+        <field table="STUDENTS" field="STUDENT_NUMBER" access="ViewOnly" />
+        <field table="STUDENTS" field="STATE_STUDENTNUMBER" access="ViewOnly" />
+        <field table="STUDENTS" field="FIRST_NAME" access="ViewOnly" />
+        <field table="STUDENTS" field="MIDDLE_NAME" access="ViewOnly" />
+        <field table="STUDENTS" field="LAST_NAME" access="ViewOnly" />
+        <field table="STUDENTS" field="DOB" access="ViewOnly" />
+        <field table="STUDENTS" field="GENDER" access="ViewOnly" />
+        <field table="STUDENTS" field="GRADE_LEVEL" access="ViewOnly" />
+        <field table="STUDENTS" field="ENTRYDATE" access="ViewOnly" />
+        <field table="STUDENTS" field="EXITDATE" access="ViewOnly" />
+        <field table="STUDENTS" field="ENROLL_STATUS" access="ViewOnly" />
+        <field table="STUDENTS" field="FEDETHNICITY" access="ViewOnly" />
+
+        <!-- SCHOOLS -->
+        <field table="SCHOOLS" field="SCHOOL_NUMBER" access="ViewOnly" />
+
+        <!-- STUDENTRACE -->
+        <field table="STUDENTRACE" field="STUDENTID" access="ViewOnly" />
+        <field table="STUDENTRACE" field="RACECD" access="ViewOnly" />
+
+        <!-- CLASSRANK -->
+        <field table="CLASSRANK" field="STUDENTID" access="ViewOnly" />
+        <field table="CLASSRANK" field="SCHOOLID" access="ViewOnly" />
+        <field table="CLASSRANK" field="GPAMETHOD" access="ViewOnly" />
+        <field table="CLASSRANK" field="GPA" access="ViewOnly" />
+        <field table="CLASSRANK" field="YEARID" access="ViewOnly" />
+        <field table="CLASSRANK" field="GRADE_LEVEL" access="ViewOnly" />
+        <field table="CLASSRANK" field="DATERANKED" access="ViewOnly" />
+        <field table="CLASSRANK" field="DCID" access="ViewOnly" />
+
+        <!-- S_CA_STU_X -->
+        <field table="S_CA_STU_X" field="STUDENTSDCID" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="LOTECERT" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="LOTECERTSOURCE" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="LOTECODE" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="FOSTERPROGRAM" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="SWDINDICATOR" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="PROGRAM504INDICATOR" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="AB469OPTOUT" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="HOMELESS" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="MIGRANTED" access="ViewOnly" />
+        <field table="S_CA_STU_X" field="PARENTED" access="ViewOnly" />
+
+        <!-- S_CA_STU_ELA_C -->
+        <field table="S_CA_STU_ELA_C" field="ID" access="ViewOnly" />
+        <field table="S_CA_STU_ELA_C" field="STUDENTSDCID" access="ViewOnly" />
+        <field table="S_CA_STU_ELA_C" field="ELASTATUS" access="ViewOnly" />
+        <field table="S_CA_STU_ELA_C" field="ELASTATUSSTARTDATE" access="ViewOnly" />
+        <field table="S_CA_STU_ELA_C" field="ELASTATUSENDDATE" access="ViewOnly" />
+        <field table="S_CA_STU_ELA_C" field="EXCLUDEFROMSTATEREPORTING" access="ViewOnly" />
+
+        <!-- PSM_STUDENTCONTACT -->
+        <field table="PSM_STUDENTCONTACT" field="ID" access="ViewOnly" />
+        <field table="PSM_STUDENTCONTACT" field="STUDENTID" access="ViewOnly" />
+        <field table="PSM_STUDENTCONTACT" field="EMAIL" access="ViewOnly" />
+
+    </access_request>
+
+    <publisher name="CUSD IT Department">
+        <contact email="itdepartment@cabrillo.k12.ca.us" />
+    </publisher>
+</plugin>
