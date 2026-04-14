@@ -1,0 +1,584 @@
+<queries>
+    <query
+      name="com.cabrillo.powerschool.ccgi.student_file"
+      coreTable="students"
+      flattened="true"
+      tags="students,state_reporting,california">
+
+        <summary>CCGI Student File Extract</summary>
+        <description>
+        Returns enrolled high school students for selected schools.
+        </description>
+
+        <args>
+            <arg name="gpa_type"
+                required="true"
+                type="primitive"
+                description="Allowed values: Weighted, Unweighted, College, Other"
+                default="Weighted"
+                casing="upper"
+                column="CLASSRANK.GPAMETHOD" />
+        </args>
+
+        <columns>
+            <column column="S_CA_SCH_X.CDS_CODE">PrimaryCDSCode</column>
+            <column column="STUDENTS.STUDENT_NUMBER">LocalStudentID</column>
+            <column column="STUDENTS.STATE_STUDENTNUMBER">StateID</column>
+
+            <column column="STUDENTS.FIRST_NAME">FirstName</column>
+            <column column="STUDENTS.FIRST_NAME">PreferredFirstName</column>
+            <column column="STUDENTS.MIDDLE_NAME">MiddleName</column>
+            <column column="STUDENTS.MIDDLE_NAME">PreferredMiddleName</column>
+            <column column="STUDENTS.LAST_NAME">LastName</column>
+            <column column="STUDENTS.LAST_NAME">PreferredLastName</column>
+            <column column="STUDENTS.ID">Suffix</column>
+
+            <column column="STUDENTS.DOB">DateOfBirth</column>
+            <column column="STUDENTS.GENDER">Gender</column>
+            <column column="STUDENTS.GRADE_LEVEL">GradeLevel</column>
+            <column column="CLASSRANK.GPA">GPA</column>
+            <column column="CLASSRANK.GPAMETHOD">GPAType</column>
+            <column column="STUDENTS.ID">CalGrantGPA</column>
+            <column column="STUDENTS.ID">NSLP</column>
+
+            <column column="S_CA_STU_X.LOTECERT">LOTECert</column>
+            <column column="S_CA_STU_X.LOTECERTSOURCE">LOTECertSource</column>
+            <column column="S_CA_STU_X.LOTECODE">LanguageCode</column>
+
+            <column column="S_CA_STU_X.FOSTERPROGRAM">FosterYouth</column>
+            <column column="STUDENTS.ID">ParentConsent</column>
+            <column column="STUDENTS.FEDETHNICITY">HispanicEthnicity</column>
+
+            <column column="STUDENTRACE.RACECD">RaceCode1</column>
+            <column column="STUDENTRACE.RACECD">RaceCode2</column>
+            <column column="STUDENTRACE.RACECD">RaceCode3</column>
+            <column column="STUDENTRACE.RACECD">RaceCode4</column>
+            <column column="STUDENTRACE.RACECD">RaceCode5</column>
+
+            <column column="STUDENTS.ENTRYDATE">EnrollmentStartDate</column>
+            <column column="STUDENTS.EXITDATE">EnrollmentEndDate</column>
+
+            <column column="PSM_STUDENTCONTACT.EMAIL">DistrictAssignedStudentEmailAddress</column>
+
+            <column column="S_CA_STU_X.SWDINDICATOR">SWDIndicator</column>
+            <column column="S_CA_STU_X.PROGRAM504INDICATOR">504ProgramIndicator</column>
+            <column column="S_CA_STU_ELA_C.ELASTATUS">EL</column>
+            <column column="S_CA_STU_X.AB469OPTOUT">AB469OptOut</column>
+            <column column="S_CA_STU_X.HOMELESS">Homeless</column>
+            <column column="S_CA_STU_X.MIGRANTED">Migrant</column>
+            <column column="S_CA_STU_X.PARENTED">ParentGuardianEdLevel</column>
+        </columns>
+
+       <sql>
+        <![CDATA[
+            WITH race_ranked AS (
+                SELECT
+                    sr.studentid,
+                    TRIM(sr.racecd) AS racecd,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY sr.studentid
+                        ORDER BY sr.racecd
+                    ) AS rn
+                FROM studentrace sr
+            ),
+
+            race_pivot AS (
+                SELECT
+                    studentid,
+                    MAX(CASE WHEN rn = 1 THEN racecd END) AS racecode1,
+                    MAX(CASE WHEN rn = 2 THEN racecd END) AS racecode2,
+                    MAX(CASE WHEN rn = 3 THEN racecd END) AS racecode3,
+                    MAX(CASE WHEN rn = 4 THEN racecd END) AS racecode4,
+                    MAX(CASE WHEN rn = 5 THEN racecd END) AS racecode5
+                FROM race_ranked
+                GROUP BY studentid
+            ),
+
+            gpa_data AS (
+                SELECT
+                    cr.studentid,
+                    cr.schoolid,
+                    cr.gpamethod,
+                    cr.gpa,
+                    cr.yearid,
+                    cr.grade_level,
+                    cr.dcid,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY cr.studentid, cr.schoolid
+                        ORDER BY
+                            cr.yearid DESC NULLS LAST,
+                            cr.grade_level DESC NULLS LAST,
+                            cr.dateranked DESC NULLS LAST,
+                            cr.dcid DESC
+                    ) AS rn
+                FROM classrank cr
+                WHERE UPPER(TRIM(cr.gpamethod)) =
+                    CASE UPPER(TRIM(:gpa_type))
+                        WHEN 'WEIGHTED' THEN 'WEIGHTED'
+                        WHEN 'UNWEIGHTED' THEN 'UNWEIGHTED'
+                        WHEN 'COLLEGE' THEN '10-12 UC/CSU A-G'
+                        WHEN 'OTHER' THEN 'CUMULATIVE'
+                    END
+            ),
+
+            gpa_final AS (
+                SELECT
+                    studentid,
+                    schoolid,
+                    gpamethod,
+                    gpa,
+                    yearid,
+                    grade_level,
+                    dcid
+                FROM gpa_data
+                WHERE rn = 1
+            ),
+
+            ela_data AS (
+                SELECT
+                    ela.studentsdcid,
+                    ela.elastatus,
+                    ela.elastatusstartdate,
+                    ela.elastatusenddate,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ela.studentsdcid
+                        ORDER BY
+                            ela.elastatusstartdate DESC NULLS LAST,
+                            ela.elastatusenddate DESC NULLS LAST,
+                            ela.id DESC
+                    ) AS rn
+                FROM s_ca_stu_ela_c ela
+                WHERE NVL(ela.excludefromstatereporting, 0) = 0
+            ),
+
+            ela_final AS (
+                SELECT
+                    studentsdcid,
+                    elastatus,
+                    elastatusstartdate,
+                    elastatusenddate
+                FROM ela_data
+                WHERE rn = 1
+            ),
+
+            student_email AS (
+                SELECT
+                    psc.studentid,
+                    TRIM(psc.email) AS email,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY psc.studentid
+                        ORDER BY psc.id DESC
+                    ) AS rn
+                FROM psm_studentcontact psc
+                WHERE psc.email IS NOT NULL
+                AND TRIM(psc.email) IS NOT NULL
+            ),
+
+            student_email_final AS (
+                SELECT
+                    studentid,
+                    email
+                FROM student_email
+                WHERE rn = 1
+            )
+
+            SELECT
+                CASE
+                    WHEN TRIM(schx.cds_code) IS NOT NULL
+                        THEN TRIM(schx.cds_code)
+                    ELSE '99999999999999'
+                END AS PrimaryCDSCode,
+
+                TO_CHAR(stu.student_number) AS LocalStudentID,
+                LPAD(TRIM(TO_CHAR(stu.state_studentnumber)), 10, '0') AS StateID,
+
+                stu.first_name AS FirstName,
+                NULL AS PreferredFirstName,
+                stu.middle_name AS MiddleName,
+                NULL AS PreferredMiddleName,
+                stu.last_name AS LastName,
+                NULL AS PreferredLastName,
+                NULL AS Suffix,
+
+                TO_CHAR(stu.dob, 'MM/DD/YYYY') AS DateOfBirth,
+
+                CASE
+                    WHEN stu.gender IN ('M', 'F', 'X') THEN stu.gender
+                    ELSE NULL
+                END AS Gender,
+
+                LPAD(TO_CHAR(stu.grade_level), 2, '0') AS GradeLevel,
+
+                CASE
+                    WHEN gd.gpa IS NOT NULL
+                    AND REGEXP_LIKE(TRIM(gd.gpa), '^[0-9]+(\.[0-9]+)?$')
+                        THEN TO_CHAR(ROUND(TO_NUMBER(TRIM(gd.gpa)), 2), 'FM9999990.00')
+                    ELSE '0.00'
+                END AS GPA,
+
+                LOWER(:gpa_type) AS GPAType,
+
+                NULL AS CalGrantGPA,
+                NULL AS NSLP,
+
+                CASE
+                    WHEN TRIM(scx.lotecert) IN ('Y', 'N') THEN TRIM(scx.lotecert)
+                    ELSE NULL
+                END AS LOTECert,
+
+                NULLIF(TRIM(scx.lotecertsource), '') AS LOTECertSource,
+                NULLIF(TRIM(scx.lotecode), '') AS LanguageCode,
+
+                CASE
+                    WHEN scx.fosterprogram = 1 THEN 'Y'
+                    ELSE NULL
+                END AS FosterYouth,
+
+                NULL AS ParentConsent,
+
+                CASE
+                    WHEN stu.fedethnicity = 1 THEN 'Y'
+                    ELSE NULL
+                END AS HispanicEthnicity,
+
+                rp.racecode1 AS RaceCode1,
+                rp.racecode2 AS RaceCode2,
+                rp.racecode3 AS RaceCode3,
+                rp.racecode4 AS RaceCode4,
+                rp.racecode5 AS RaceCode5,
+
+                TO_CHAR(stu.entrydate, 'MM/DD/YYYY') AS EnrollmentStartDate,
+                TO_CHAR(stu.exitdate, 'MM/DD/YYYY') AS EnrollmentEndDate,
+
+                se.email AS DistrictAssignedStudentEmailAddress,
+
+                CASE
+                    WHEN TRIM(scx.swdindicator) = 'Y' THEN 'Y'
+                    ELSE NULL
+                END AS SWDIndicator,
+
+                CASE
+                    WHEN TRIM(scx.program504indicator) = 'Y' THEN 'Y'
+                    ELSE NULL
+                END AS "504ProgramIndicator",
+
+                CASE
+                    WHEN TRIM(ed.elastatus) = 'EL' THEN 'Y'
+                    ELSE NULL
+                END AS EL,
+
+                CASE
+                    WHEN TRIM(scx.ab469optout) = 'Y' THEN 'Y'
+                    ELSE NULL
+                END AS AB469OptOut,
+
+                CASE
+                    WHEN TRIM(scx.homeless) = 'Y' THEN 'Y'
+                    ELSE NULL
+                END AS Homeless,
+
+                CASE
+                    WHEN scx.migranted = 1 THEN 'Y'
+                    ELSE NULL
+                END AS Migrant,
+
+                CASE
+                    WHEN TRIM(scx.parented) IN ('10', '11', '12', '13', '14', '15')
+                        THEN TRIM(scx.parented)
+                    ELSE NULL
+                END AS ParentGuardianEdLevel
+
+            FROM students stu
+            JOIN schools sch
+                ON sch.school_number = stu.schoolid
+            LEFT JOIN s_ca_sch_x schx
+                ON schx.schoolsdcid = sch.dcid
+            LEFT JOIN race_pivot rp
+                ON rp.studentid = stu.id
+            LEFT JOIN gpa_final gd
+                ON gd.studentid = stu.id
+            AND gd.schoolid = stu.schoolid
+            LEFT JOIN s_ca_stu_x scx
+                ON scx.studentsdcid = stu.dcid
+            LEFT JOIN ela_final ed
+                ON ed.studentsdcid = stu.dcid
+            LEFT JOIN student_email_final se
+                ON se.studentid = stu.id
+
+            WHERE stu.schoolid IN (4130027, 4132817)
+            AND stu.enroll_status IN (-1, 0)
+            AND stu.grade_level BETWEEN 9 AND 12
+            AND stu.state_studentnumber IS NOT NULL
+
+            ORDER BY
+                sch.school_number,
+                stu.grade_level,
+                stu.last_name,
+                stu.first_name
+        ]]>
+        </sql> 
+    </query>
+    <query 
+        name="com.cabrillo.powerschool.ccgi.course_grade"
+        coreTable="STUDENTS"
+        flattened="true"
+        tags="ccgi,grades,transcripts">
+
+        <summary>CCGI course grade data export</summary>
+        <description>
+        Returns CCGI course grade data for active high school students.
+        </description>
+
+        <columns>
+            <column column="STUDENTS.STATE_STUDENTNUMBER">students.stateid</column>
+            <column column="S_CA_SCH_X.CDS_CODE">schools.cdscode</column>
+            <column column="S_CA_SGR_X.CCGI_ATPCODE">s_ca_sgr_x.atpcode</column>
+            <column column="STOREDGRADES.SCHOOLNAME">storedgrades.courseinstitutionname</column>
+            <column column="STOREDGRADES.STORECODE">storedgrades.isworkinprogress</column>
+            <column column="STOREDGRADES.GRADE_LEVEL">storedgrades.gradelevel</column>
+            <column column="TERMS.FIRSTDAY">terms.schoolyear</column>
+            <column column="TERMS.NAME">terms.termdescription</column>
+            <column column="STOREDGRADES.STORECODE">storedgrades.term</column>
+            <column column="STOREDGRADES.STORECODE">storedgrades.coursecurriculumterm</column>
+            <column column="STOREDGRADES.COURSE_NUMBER">storedgrades.localcourseid</column>
+            <column column="STOREDGRADES.COURSE_NAME">storedgrades.transcriptabbreviation</column>
+            <column column="S_CA_SGR_X.UCCSU_AREA">s_ca_sgr_x.subjectarea</column>
+            <column column="S_CA_CRS_X.NS_INSTRUCTIONAL_LVL">s_ca_crs_x.academicindicator</column>
+            <column column="S_CA_SGR_X.CCGI_DUALENRIND_YN">s_ca_sgr_x.dualenrollmentindicator</column>
+            <column column="STOREDGRADES.POTENTIALCRHRS">storedgrades.creditsattempted</column>
+            <column column="STOREDGRADES.EARNEDCRHRS">storedgrades.creditsearned</column>
+            <column column="STOREDGRADES.GRADE">storedgrades.coursegrade</column>
+        </columns>
+
+        <sql>
+            <![CDATA[
+            WITH calpads_ap_ib_codes AS (
+                SELECT '9002' AS course_code, 'AP' AS academicindicator FROM dual
+                UNION ALL SELECT '9003', 'AP' FROM dual
+                UNION ALL SELECT '9004', 'AP' FROM dual
+                UNION ALL SELECT '9005', 'AP' FROM dual
+                UNION ALL SELECT '9066', 'AP' FROM dual
+                UNION ALL SELECT '9067', 'AP' FROM dual
+                UNION ALL SELECT '9118', 'AP' FROM dual
+                UNION ALL SELECT '9119', 'AP' FROM dual
+                UNION ALL SELECT '9146', 'AP' FROM dual
+                UNION ALL SELECT '9147', 'AP' FROM dual
+                UNION ALL SELECT '9148', 'AP' FROM dual
+                UNION ALL SELECT '9149', 'AP' FROM dual
+                UNION ALL SELECT '9150', 'AP' FROM dual
+                UNION ALL SELECT '9151', 'AP' FROM dual
+                UNION ALL SELECT '9152', 'AP' FROM dual
+                UNION ALL SELECT '9153', 'AP' FROM dual
+                UNION ALL SELECT '9191', 'AP' FROM dual
+                UNION ALL SELECT '9192', 'AP' FROM dual
+                UNION ALL SELECT '9193', 'AP' FROM dual
+                UNION ALL SELECT '9194', 'AP' FROM dual
+                UNION ALL SELECT '9195', 'AP' FROM dual
+                UNION ALL SELECT '9196', 'AP' FROM dual
+                UNION ALL SELECT '9197', 'AP' FROM dual
+                UNION ALL SELECT '9198', 'AP' FROM dual
+                UNION ALL SELECT '9199', 'AP' FROM dual
+                UNION ALL SELECT '9225', 'AP' FROM dual
+                UNION ALL SELECT '9226', 'AP' FROM dual
+                UNION ALL SELECT '9258', 'AP' FROM dual
+                UNION ALL SELECT '9259', 'AP' FROM dual
+                UNION ALL SELECT '9266', 'AP' FROM dual
+                UNION ALL SELECT '9267', 'AP' FROM dual
+                UNION ALL SELECT '9268', 'AP' FROM dual
+                UNION ALL SELECT '9300', 'AP' FROM dual
+                UNION ALL SELECT '9344', 'AP' FROM dual
+                UNION ALL SELECT '9345', 'AP' FROM dual
+                UNION ALL SELECT '9346', 'AP' FROM dual
+                UNION ALL SELECT '9347', 'AP' FROM dual
+                UNION ALL SELECT '9348', 'AP' FROM dual
+                UNION ALL SELECT '9349', 'AP' FROM dual
+                UNION ALL SELECT '9350', 'AP' FROM dual
+                UNION ALL SELECT '9361', 'AP' FROM dual
+                UNION ALL SELECT '9362', 'AP' FROM dual
+
+                UNION ALL SELECT '9006', 'IB' FROM dual
+                UNION ALL SELECT '9007', 'IB' FROM dual
+                UNION ALL SELECT '9052', 'IB' FROM dual
+                UNION ALL SELECT '9065', 'IB' FROM dual
+                UNION ALL SELECT '9068', 'IB' FROM dual
+                UNION ALL SELECT '9069', 'IB' FROM dual
+                UNION ALL SELECT '9081', 'IB' FROM dual
+                UNION ALL SELECT '9093', 'IB' FROM dual
+                UNION ALL SELECT '9094', 'IB' FROM dual
+                UNION ALL SELECT '9095', 'IB' FROM dual
+                UNION ALL SELECT '9113', 'IB' FROM dual
+                UNION ALL SELECT '9114', 'IB' FROM dual
+                UNION ALL SELECT '9115', 'IB' FROM dual
+                UNION ALL SELECT '9116', 'IB' FROM dual
+                UNION ALL SELECT '9117', 'IB' FROM dual
+                UNION ALL SELECT '9138', 'IB' FROM dual
+                UNION ALL SELECT '9139', 'IB' FROM dual
+                UNION ALL SELECT '9140', 'IB' FROM dual
+                UNION ALL SELECT '9141', 'IB' FROM dual
+                UNION ALL SELECT '9142', 'IB' FROM dual
+                UNION ALL SELECT '9143', 'IB' FROM dual
+                UNION ALL SELECT '9144', 'IB' FROM dual
+                UNION ALL SELECT '9145', 'IB' FROM dual
+                UNION ALL SELECT '9181', 'IB' FROM dual
+                UNION ALL SELECT '9182', 'IB' FROM dual
+                UNION ALL SELECT '9183', 'IB' FROM dual
+                UNION ALL SELECT '9184', 'IB' FROM dual
+                UNION ALL SELECT '9185', 'IB' FROM dual
+                UNION ALL SELECT '9186', 'IB' FROM dual
+                UNION ALL SELECT '9187', 'IB' FROM dual
+                UNION ALL SELECT '9188', 'IB' FROM dual
+                UNION ALL SELECT '9189', 'IB' FROM dual
+                UNION ALL SELECT '9190', 'IB' FROM dual
+                UNION ALL SELECT '9235', 'IB' FROM dual
+                UNION ALL SELECT '9261', 'IB' FROM dual
+                UNION ALL SELECT '9263', 'IB' FROM dual
+                UNION ALL SELECT '9264', 'IB' FROM dual
+                UNION ALL SELECT '9281', 'IB' FROM dual
+                UNION ALL SELECT '9282', 'IB' FROM dual
+                UNION ALL SELECT '9283', 'IB' FROM dual
+                UNION ALL SELECT '9284', 'IB' FROM dual
+                UNION ALL SELECT '9285', 'IB' FROM dual
+                UNION ALL SELECT '9286', 'IB' FROM dual
+                UNION ALL SELECT '9301', 'IB' FROM dual
+                UNION ALL SELECT '9302', 'IB' FROM dual
+                UNION ALL SELECT '9317', 'IB' FROM dual
+                UNION ALL SELECT '9351', 'IB' FROM dual
+                UNION ALL SELECT '9352', 'IB' FROM dual
+                UNION ALL SELECT '9353', 'IB' FROM dual
+                UNION ALL SELECT '9354', 'IB' FROM dual
+                UNION ALL SELECT '9355', 'IB' FROM dual
+                UNION ALL SELECT '9356', 'IB' FROM dual
+                UNION ALL SELECT '9357', 'IB' FROM dual
+                UNION ALL SELECT '9382', 'IB' FROM dual
+            ),
+            ccgi_course_grade AS (
+                SELECT DISTINCT
+                    stu.state_studentnumber AS stateid,
+
+                    CASE
+                        WHEN sg.schoolname IN ('Half Moon Bay High School', 'Pilarcitos High School')
+                            AND TRIM(schx.cds_code) IS NOT NULL
+                            THEN TRIM(schx.cds_code)
+                        WHEN TRIM(sgrx.cds_code) IS NOT NULL
+                            THEN TRIM(sgrx.cds_code)
+                        ELSE '99999999999999'
+                    END AS cdscode,
+
+                    CASE
+                        WHEN TRIM(sgrx.ccgi_atpcode) IS NOT NULL
+                            THEN LPAD(TRIM(sgrx.ccgi_atpcode), 6, '0')
+                        ELSE NULL
+                    END AS atpcode,
+
+                    CAST(NULL AS VARCHAR2(200)) AS courseinstitutionname,
+
+                    'N' AS isworkinprogress,
+
+                    LPAD(TO_CHAR(sg.grade_level), 2, '0') AS gradelevel,
+
+                    CASE
+                        WHEN t.firstday IS NOT NULL AND t.lastday IS NOT NULL THEN
+                            TO_CHAR(t.firstday, 'YYYY') || '-' || SUBSTR(TO_CHAR(t.lastday, 'YYYY'), 3, 2)
+                        ELSE NULL
+                    END AS schoolyear,
+
+                    t.name AS termdescription,
+
+                    CASE
+                        WHEN sg.storecode IN ('Y1', 'YR', 'FY') THEN 'F'
+                        WHEN sg.storecode = 'S3' THEN 'SS1'
+                        ELSE sg.storecode
+                    END AS term,
+
+                    CASE
+                        WHEN sg.storecode IN ('Y1', 'YR', 'FY') THEN 'F'
+                        WHEN sg.storecode = 'S3' THEN 'SS1'
+                        ELSE sg.storecode
+                    END AS coursecurriculumterm,
+
+                    NVL(TRIM(sgrx.alternatecoursenumber), TRIM(sg.course_number)) AS localcourseid,
+
+                    TRIM(sg.course_name) AS transcriptabbreviation,
+
+                    CASE
+                        WHEN sgrx.uccsu_area IS NULL THEN 'Z'
+                        WHEN SUBSTR(TRIM(sgrx.uccsu_area), 1, 1) IN ('A','B','C','D','E','F','G','Z')
+                            THEN SUBSTR(TRIM(sgrx.uccsu_area), 1, 1)
+                        ELSE 'Z'
+                    END AS subjectarea,
+
+                    CASE
+                        WHEN crsx.ns_instructional_lvl IN ('14', '15') THEN 'H'
+                        WHEN lookup.academicindicator IN ('AP', 'IB') THEN lookup.academicindicator
+                        ELSE NULL
+                    END AS academicindicator,
+
+                    CASE
+                        WHEN UPPER(TRIM(sgrx.ccgi_dualenrind_yn)) IN ('Y', 'TRUE', '1', 'DE') THEN 'DE'
+                        WHEN UPPER(TRIM(sgrx.ccgi_dualenrind_yn)) = 'N' THEN NULL
+                        ELSE NULL
+                    END AS dualenrollmentindicator,
+
+                    NVL(sg.potentialcrhrs, 0) AS creditsattempted,
+                    NVL(sg.earnedcrhrs, 0) AS creditsearned,
+
+                    CASE
+                        WHEN sg.grade IS NULL OR TRIM(sg.grade) = '' THEN NULL
+                        ELSE TRIM(sg.grade)
+                    END AS coursegrade
+
+                FROM storedgrades sg
+                JOIN students stu
+                ON stu.id = sg.studentid
+                LEFT JOIN terms t
+                ON t.id = sg.termid
+                LEFT JOIN s_ca_sgr_x sgrx
+                ON sgrx.storedgradesdcid = sg.dcid
+                LEFT JOIN schools sch
+                ON sg.schoolname = sch.name
+                LEFT JOIN s_ca_sch_x schx
+                ON schx.schoolsdcid = sch.dcid
+                LEFT JOIN courses c
+                ON c.course_number = sg.course_number
+                LEFT JOIN coursescorefields csf
+                ON csf.coursesdcid = c.dcid
+                LEFT JOIN s_ca_crs_x crsx
+                ON crsx.coursesdcid = c.dcid
+                LEFT JOIN calpads_ap_ib_codes lookup
+                ON TRIM(csf.alt_course_number) = lookup.course_code
+                WHERE sg.schoolid IN (4130027, 4132817)
+                AND stu.schoolid IN (4130027, 4132817)
+                AND stu.enroll_status = 0
+                AND stu.state_studentnumber IS NOT NULL
+                AND sg.grade_level BETWEEN 9 AND 12
+                AND NVL(sg.potentialcrhrs, 0) > 0
+            )
+            SELECT
+                stateid,
+                cdscode,
+                atpcode,
+                courseinstitutionname,
+                isworkinprogress,
+                gradelevel,
+                schoolyear,
+                termdescription,
+                term,
+                coursecurriculumterm,
+                localcourseid,
+                transcriptabbreviation,
+                subjectarea,
+                academicindicator,
+                dualenrollmentindicator,
+                creditsattempted,
+                creditsearned,
+                coursegrade
+            FROM ccgi_course_grade
+            ORDER BY
+                stateid,
+                schoolyear,
+                term,
+                localcourseid
+            ]]>
+        </sql>
+    </query>
+</queries>

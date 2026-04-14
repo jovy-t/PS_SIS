@@ -3,7 +3,7 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://plugin.powerschool.pearson.com plugin.xsd"
         name="CUSD - PowerQueries CCGI Files"
-        version="1.0.1"
+        version="1.0.2"
         description="PowerQueries for CCGI Files.">
     <oauth></oauth>
     <access_request>
@@ -25,7 +25,9 @@
         <field table="STUDENTS" field="FEDETHNICITY" access="ViewOnly" />
 
         <!-- SCHOOLS -->
-        <field table="SCHOOLS" field="SCHOOL_NUMBER" access="ViewOnly" />
+        <field table="SCHOOLS" field="DCID" access="ViewOnly"/>
+        <field table="SCHOOLS" field="NAME" access="ViewOnly"/>
+        <field table="SCHOOLS" field="SCHOOL_NUMBER" access="ViewOnly"/>
 
         <!-- STUDENTRACE -->
         <field table="STUDENTRACE" field="STUDENTID" access="ViewOnly" />
@@ -66,6 +68,43 @@
         <field table="PSM_STUDENTCONTACT" field="ID" access="ViewOnly" />
         <field table="PSM_STUDENTCONTACT" field="STUDENTID" access="ViewOnly" />
         <field table="PSM_STUDENTCONTACT" field="EMAIL" access="ViewOnly" />
+
+        <field table="S_CA_SGR_X" field="STOREDGRADESDCID" access="ViewOnly"/>
+        <field table="S_CA_SGR_X" field="CDS_CODE" access="ViewOnly"/>
+        <field table="S_CA_SGR_X" field="CCGI_ATPCODE" access="ViewOnly"/>
+        <field table="S_CA_SGR_X" field="ALTERNATECOURSENUMBER" access="ViewOnly"/>
+        <field table="S_CA_SGR_X" field="UCCSU_AREA" access="ViewOnly"/>
+        <field table="S_CA_SGR_X" field="CCGI_DUALENRIND_YN" access="ViewOnly"/>
+
+        <field table="STOREDGRADES" field="DCID" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="STUDENTID" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="SCHOOLID" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="SCHOOLNAME" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="TERMID" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="STORECODE" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="GRADE_LEVEL" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="COURSE_NUMBER" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="COURSE_NAME" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="POTENTIALCRHRS" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="EARNEDCRHRS" access="ViewOnly"/>
+        <field table="STOREDGRADES" field="GRADE" access="ViewOnly"/>
+
+        <field table="TERMS" field="ID" access="ViewOnly"/>
+        <field table="TERMS" field="FIRSTDAY" access="ViewOnly"/>
+        <field table="TERMS" field="LASTDAY" access="ViewOnly"/>
+        <field table="TERMS" field="NAME" access="ViewOnly"/>
+
+        <field table="COURSES" field="DCID" access="ViewOnly"/>
+        <field table="COURSES" field="COURSE_NUMBER" access="ViewOnly"/>
+
+        <field table="COURSESCOREFIELDS" field="COURSESDCID" access="ViewOnly"/>
+        <field table="COURSESCOREFIELDS" field="ALT_COURSE_NUMBER" access="ViewOnly"/>
+
+        <field table="S_CA_SCH_X" field="SCHOOLSDCID" access="ViewOnly"/>
+        <field table="S_CA_SCH_X" field="CDS_CODE" access="ViewOnly"/>
+
+        <field table="S_CA_CRS_X" field="COURSESDCID" access="ViewOnly"/>
+        <field table="S_CA_CRS_X" field="NS_INSTRUCTIONAL_LVL" access="ViewOnly"/>
 
     </access_request>
 
