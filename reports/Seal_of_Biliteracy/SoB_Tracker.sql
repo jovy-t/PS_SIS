@@ -66,38 +66,120 @@ english_coursework AS (
     GROUP BY sg.studentid
 ),
 
-world_language_coursework AS (
+world_language_courses_raw AS (
     /*
-    Fields produced:
-    - wl_years_completed: count of distinct grade levels with earned credit
-    - wl_total_credits
-    - wl_gpa
-
-    Important:
-    This identifies coursework progress, but California's coursework
-    path also requires oral proficiency or another qualifying language
-    assessment. That extra requirement is NOT fully mapped yet, so
-    coursework alone does not automatically mark the student as fully
-    qualified in the final result.
-    --------------------------------------------------------------
+    World language coursework is based on specific district-approved
+    CALPADS alt course numbers.
     */
     SELECT
         sg.studentid,
-        COUNT(DISTINCT CASE
-            WHEN NVL(sg.earnedcrhrs, 0) > 0 THEN TO_NUMBER(sg.grade_level)
-        END) AS wl_years_completed,
-        SUM(NVL(sg.earnedcrhrs, 0)) AS wl_total_credits,
-        ROUND(
-            SUM((NVL(sg.gpa_points, 0) + NVL(sg.gpa_addedvalue, 0)) * NVL(sg.earnedcrhrs, 0))
-            / NULLIF(SUM(NVL(sg.earnedcrhrs, 0)), 0),
-            3
-        ) AS wl_gpa
+        sg.course_number,
+        c.course_name,
+        ccf.alt_course_number,
+        NVL(sg.earnedcrhrs, 0) AS earnedcrhrs,
+        NVL(sg.gpa_points, 0) AS gpa_points,
+        NVL(sg.gpa_addedvalue, 0) AS gpa_addedvalue,
+        TO_NUMBER(sg.grade_level) AS grade_level
     FROM storedgrades sg
     JOIN courses c
         ON c.course_number = sg.course_number
+    JOIN coursescorefields ccf
+        ON ccf.coursesdcid = c.dcid
     WHERE TO_NUMBER(sg.grade_level) >= 9
-      AND c.sched_department = 'FL'
-    GROUP BY sg.studentid
+      AND ccf.alt_course_number IN (9153, 9150, 9130, 9131, 9132, 9134, 9135)
+),
+
+world_language_pathways AS (
+    /*
+    This CTE evaluates each district-approved coursework pathway separately.
+
+    Path A:
+    - Any one AP language course
+    - alt_course_number IN (9153, 9150)
+    - GPA >= 3.0 in the AP language coursework taken
+
+    Path B:
+    - All three courses 9130, 9131, 9132
+    - GPA >= 3.0 across those three courses
+
+    Path C:
+    - Both courses 9134, 9135
+    - GPA >= 3.0 across those two courses
+    */
+    SELECT
+        w.studentid,
+
+        /* Audit totals across all approved WL coursework buckets */
+        COUNT(DISTINCT CASE WHEN w.earnedcrhrs > 0 THEN w.alt_course_number END) AS wl_alt_courses_completed,
+        SUM(w.earnedcrhrs) AS wl_total_credits,
+        ROUND(
+            SUM((w.gpa_points + w.gpa_addedvalue) * w.earnedcrhrs)
+            / NULLIF(SUM(w.earnedcrhrs), 0),
+            3
+        ) AS wl_overall_gpa,
+
+        /* Path A: any one AP language course */
+        COUNT(DISTINCT CASE
+            WHEN w.alt_course_number IN (9153, 9150) AND w.earnedcrhrs > 0
+            THEN w.alt_course_number
+        END) AS wl_ap_course_count,
+
+        ROUND(
+            SUM(CASE
+                WHEN w.alt_course_number IN (9153, 9150)
+                THEN (w.gpa_points + w.gpa_addedvalue) * w.earnedcrhrs
+                ELSE 0
+            END)
+            / NULLIF(SUM(CASE
+                WHEN w.alt_course_number IN (9153, 9150)
+                THEN w.earnedcrhrs
+                ELSE 0
+            END), 0),
+            3
+        ) AS wl_ap_course_gpa,
+
+        /* Path B: all three courses 9130, 9131, 9132 */
+        COUNT(DISTINCT CASE
+            WHEN w.alt_course_number IN (9130, 9131, 9132) AND w.earnedcrhrs > 0
+            THEN w.alt_course_number
+        END) AS wl_three_course_count,
+
+        ROUND(
+            SUM(CASE
+                WHEN w.alt_course_number IN (9130, 9131, 9132)
+                THEN (w.gpa_points + w.gpa_addedvalue) * w.earnedcrhrs
+                ELSE 0
+            END)
+            / NULLIF(SUM(CASE
+                WHEN w.alt_course_number IN (9130, 9131, 9132)
+                THEN w.earnedcrhrs
+                ELSE 0
+            END), 0),
+            3
+        ) AS wl_three_course_gpa,
+
+        /* Path C: both courses 9134, 9135 */
+        COUNT(DISTINCT CASE
+            WHEN w.alt_course_number IN (9134, 9135) AND w.earnedcrhrs > 0
+            THEN w.alt_course_number
+        END) AS wl_two_course_count,
+
+        ROUND(
+            SUM(CASE
+                WHEN w.alt_course_number IN (9134, 9135)
+                THEN (w.gpa_points + w.gpa_addedvalue) * w.earnedcrhrs
+                ELSE 0
+            END)
+            / NULLIF(SUM(CASE
+                WHEN w.alt_course_number IN (9134, 9135)
+                THEN w.earnedcrhrs
+                ELSE 0
+            END), 0),
+            3
+        ) AS wl_two_course_gpa
+
+    FROM world_language_courses_raw w
+    GROUP BY w.studentid
 ),
 
 legacy_ap_scores AS (
@@ -255,9 +337,15 @@ final_flags AS (
         ec.eng_total_credits,
         ec.eng_gpa,
 
-        wl.wl_years_completed,
+        wl.wl_alt_courses_completed,
         wl.wl_total_credits,
-        wl.wl_gpa,
+        wl.wl_overall_gpa,
+        wl.wl_ap_course_count,
+        wl.wl_ap_course_gpa,
+        wl.wl_three_course_count,
+        wl.wl_three_course_gpa,
+        wl.wl_two_course_count,
+        wl.wl_two_course_gpa,
 
         ap.ap_english_score,
         ap.ap_french_score,
@@ -271,7 +359,7 @@ final_flags AS (
         ca.elpac_oral_language_pl,
 
         CASE
-            WHEN NVL(ec.eng_total_credits, 0) >= 40
+            WHEN NVL(ec.eng_total_credits, 0) >= 35
              AND NVL(ec.eng_gpa, 0) >= 3.0
             THEN 1 ELSE 0
         END AS english_coursework_met,
@@ -291,8 +379,9 @@ final_flags AS (
 
         /* Coursework progress for world language */
         CASE
-            WHEN NVL(wl.wl_years_completed, 0) >= 4
-             AND NVL(wl.wl_gpa, 0) >= 3.0
+            WHEN (NVL(wl.wl_ap_course_count, 0) >= 1 AND NVL(wl.wl_ap_course_gpa, 0) >= 3.0)
+            OR (NVL(wl.wl_three_course_count, 0) = 3 AND NVL(wl.wl_three_course_gpa, 0) >= 3.0)
+            OR (NVL(wl.wl_two_course_count, 0) = 2 AND NVL(wl.wl_two_course_gpa, 0) >= 3.0)
             THEN 1 ELSE 0
         END AS wl_coursework_progress_met,
 
@@ -306,7 +395,7 @@ final_flags AS (
     FROM student_scope ss
     LEFT JOIN english_coursework ec
         ON ec.studentid = ss.id
-    LEFT JOIN world_language_coursework wl
+    LEFT JOIN world_language_pathways wl
         ON wl.studentid = ss.id
     LEFT JOIN legacy_ap_scores ap
         ON ap.studentid = ss.id
@@ -329,9 +418,15 @@ SELECT
     ff.sbac_ela_achievement_level            AS "SBAC ELA Achievement Level",
     ff.ap_english_score                      AS "AP English Score",
 
-    ff.wl_years_completed                    AS "WL Years Completed",
+    ff.wl_alt_courses_completed              AS "WL Approved Courses Completed",
     ff.wl_total_credits                      AS "WL Credits",
-    ff.wl_gpa                                AS "WL GPA",
+    ff.wl_overall_gpa                        AS "WL Overall GPA",
+    ff.wl_ap_course_count                    AS "WL AP Course Count",
+    ff.wl_ap_course_gpa                      AS "WL AP Course GPA",
+    ff.wl_three_course_count                 AS "3-Course Language Sequence Completed",
+    ff.wl_three_course_gpa                   AS "WL 3-Course Path GPA",
+    ff.wl_two_course_count                   AS "2-Course Language Sequence Completed",
+    ff.wl_two_course_gpa                     AS "WL 2-Course Path GPA",
     ff.ap_french_score                       AS "AP French Score",
     ff.ap_spanish_score                      AS "AP Spanish Score",
 
