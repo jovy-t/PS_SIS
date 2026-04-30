@@ -581,4 +581,253 @@
             ]]>
         </sql>
     </query>
+
+    <query name="com.cabrillo.powerschool.ccgi.course_catalog"
+       flattened="true"
+       coreTable="SECTIONS">
+
+       <summary>CCGI Course Catalog Extract</summary>
+        <description>
+        Generates the CCGI Course Catalog file based on courses actively taught during the selected academic year.
+        </description>
+
+        <args>
+            <arg name="school_year_start"
+                required="true"
+                type="primitive"
+                description="Starting calendar year of the academic year, e.g. 2025 for 2025-2026"
+                column="TERMS.FIRSTDAY" />
+        </args>
+
+        <columns>
+            <column column="S_CA_SCH_X.CDS_CODE">CDSCode</column>
+            <column column="S_CA_SGR_X.UCCSU_AREA">Graduation Requirements</column>
+            <column column="COURSES.SCHED_COURSESUBJECTAREACODE">Subject</column>
+            <column column="S_CA_CRS_X.TRANSCRIPTCOURSENAME">CourseTitle</column>
+            <column column="COURSES.COURSE_NAME">Description</column>
+            <column column="COURSES.COURSE_NUMBER">CourseNumber</column>
+            <column column="STOREDGRADES.STORECODE">CourseDuration</column>
+            <column column="COURSES.ID">Academic</column>
+            <column column="COURSES.CREDIT_HOURS">Credits</column>
+            <column column="S_CA_CRS_X.NS_INSTRUCTIONAL_LVL">Honors</column>
+            <column column="SECTIONS.COURSE_NUMBER">Offered</column>
+            <column column="S_CA_CRS_X.DEPT_GRADE_LVL_RANGE">SchoolType</column>
+            <column column="SECTIONS.TERMID">Year</column>
+            <column column="COURSESCOREFIELDS.ALT_COURSE_NUMBER">StateCourseCode</column>
+        </columns>
+
+        <sql>
+            <![CDATA[
+                WITH calpads_ap_ib_codes AS (
+                    SELECT '9002' AS course_code, 'AP' AS academicindicator FROM dual
+                    UNION ALL SELECT '9003', 'AP' FROM dual
+                    UNION ALL SELECT '9004', 'AP' FROM dual
+                    UNION ALL SELECT '9005', 'AP' FROM dual
+                    UNION ALL SELECT '9066', 'AP' FROM dual
+                    UNION ALL SELECT '9067', 'AP' FROM dual
+                    UNION ALL SELECT '9118', 'AP' FROM dual
+                    UNION ALL SELECT '9119', 'AP' FROM dual
+                    UNION ALL SELECT '9146', 'AP' FROM dual
+                    UNION ALL SELECT '9147', 'AP' FROM dual
+                    UNION ALL SELECT '9148', 'AP' FROM dual
+                    UNION ALL SELECT '9149', 'AP' FROM dual
+                    UNION ALL SELECT '9150', 'AP' FROM dual
+                    UNION ALL SELECT '9151', 'AP' FROM dual
+                    UNION ALL SELECT '9152', 'AP' FROM dual
+                    UNION ALL SELECT '9153', 'AP' FROM dual
+                    UNION ALL SELECT '9191', 'AP' FROM dual
+                    UNION ALL SELECT '9192', 'AP' FROM dual
+                    UNION ALL SELECT '9193', 'AP' FROM dual
+                    UNION ALL SELECT '9194', 'AP' FROM dual
+                    UNION ALL SELECT '9195', 'AP' FROM dual
+                    UNION ALL SELECT '9196', 'AP' FROM dual
+                    UNION ALL SELECT '9197', 'AP' FROM dual
+                    UNION ALL SELECT '9198', 'AP' FROM dual
+                    UNION ALL SELECT '9199', 'AP' FROM dual
+                    UNION ALL SELECT '9225', 'AP' FROM dual
+                    UNION ALL SELECT '9226', 'AP' FROM dual
+                    UNION ALL SELECT '9258', 'AP' FROM dual
+                    UNION ALL SELECT '9259', 'AP' FROM dual
+                    UNION ALL SELECT '9266', 'AP' FROM dual
+                    UNION ALL SELECT '9267', 'AP' FROM dual
+                    UNION ALL SELECT '9268', 'AP' FROM dual
+                    UNION ALL SELECT '9300', 'AP' FROM dual
+                    UNION ALL SELECT '9344', 'AP' FROM dual
+                    UNION ALL SELECT '9345', 'AP' FROM dual
+                    UNION ALL SELECT '9346', 'AP' FROM dual
+                    UNION ALL SELECT '9347', 'AP' FROM dual
+                    UNION ALL SELECT '9348', 'AP' FROM dual
+                    UNION ALL SELECT '9349', 'AP' FROM dual
+                    UNION ALL SELECT '9350', 'AP' FROM dual
+                    UNION ALL SELECT '9361', 'AP' FROM dual
+                    UNION ALL SELECT '9362', 'AP' FROM dual
+                    UNION ALL SELECT '9006', 'IB' FROM dual
+                    UNION ALL SELECT '9007', 'IB' FROM dual
+                    UNION ALL SELECT '9052', 'IB' FROM dual
+                    UNION ALL SELECT '9065', 'IB' FROM dual
+                    UNION ALL SELECT '9068', 'IB' FROM dual
+                    UNION ALL SELECT '9069', 'IB' FROM dual
+                    UNION ALL SELECT '9081', 'IB' FROM dual
+                    UNION ALL SELECT '9093', 'IB' FROM dual
+                    UNION ALL SELECT '9094', 'IB' FROM dual
+                    UNION ALL SELECT '9095', 'IB' FROM dual
+                    UNION ALL SELECT '9113', 'IB' FROM dual
+                    UNION ALL SELECT '9114', 'IB' FROM dual
+                    UNION ALL SELECT '9115', 'IB' FROM dual
+                    UNION ALL SELECT '9116', 'IB' FROM dual
+                    UNION ALL SELECT '9117', 'IB' FROM dual
+                    UNION ALL SELECT '9138', 'IB' FROM dual
+                    UNION ALL SELECT '9139', 'IB' FROM dual
+                    UNION ALL SELECT '9140', 'IB' FROM dual
+                    UNION ALL SELECT '9141', 'IB' FROM dual
+                    UNION ALL SELECT '9142', 'IB' FROM dual
+                    UNION ALL SELECT '9143', 'IB' FROM dual
+                    UNION ALL SELECT '9144', 'IB' FROM dual
+                    UNION ALL SELECT '9145', 'IB' FROM dual
+                    UNION ALL SELECT '9181', 'IB' FROM dual
+                    UNION ALL SELECT '9182', 'IB' FROM dual
+                    UNION ALL SELECT '9183', 'IB' FROM dual
+                    UNION ALL SELECT '9184', 'IB' FROM dual
+                    UNION ALL SELECT '9185', 'IB' FROM dual
+                    UNION ALL SELECT '9186', 'IB' FROM dual
+                    UNION ALL SELECT '9187', 'IB' FROM dual
+                    UNION ALL SELECT '9188', 'IB' FROM dual
+                    UNION ALL SELECT '9189', 'IB' FROM dual
+                    UNION ALL SELECT '9190', 'IB' FROM dual
+                    UNION ALL SELECT '9235', 'IB' FROM dual
+                    UNION ALL SELECT '9261', 'IB' FROM dual
+                    UNION ALL SELECT '9263', 'IB' FROM dual
+                    UNION ALL SELECT '9264', 'IB' FROM dual
+                    UNION ALL SELECT '9281', 'IB' FROM dual
+                    UNION ALL SELECT '9282', 'IB' FROM dual
+                    UNION ALL SELECT '9283', 'IB' FROM dual
+                    UNION ALL SELECT '9284', 'IB' FROM dual
+                    UNION ALL SELECT '9285', 'IB' FROM dual
+                    UNION ALL SELECT '9286', 'IB' FROM dual
+                    UNION ALL SELECT '9301', 'IB' FROM dual
+                    UNION ALL SELECT '9302', 'IB' FROM dual
+                    UNION ALL SELECT '9317', 'IB' FROM dual
+                    UNION ALL SELECT '9351', 'IB' FROM dual
+                    UNION ALL SELECT '9352', 'IB' FROM dual
+                    UNION ALL SELECT '9353', 'IB' FROM dual
+                    UNION ALL SELECT '9354', 'IB' FROM dual
+                    UNION ALL SELECT '9355', 'IB' FROM dual
+                    UNION ALL SELECT '9356', 'IB' FROM dual
+                    UNION ALL SELECT '9357', 'IB' FROM dual
+                    UNION ALL SELECT '9382', 'IB' FROM dual
+                ),
+
+                storedgrades_ranked AS (
+                    SELECT
+                        sg.schoolid,
+                        sg.course_number,
+                        sg.dcid AS storedgradesdcid,
+                        sg.schoolname,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY sg.schoolid, sg.course_number
+                            ORDER BY sg.dcid DESC
+                        ) AS rn
+                    FROM storedgrades sg
+                ),
+
+                storedgrades_one AS (
+                    SELECT
+                        schoolid,
+                        course_number,
+                        storedgradesdcid,
+                        schoolname
+                    FROM storedgrades_ranked
+                    WHERE rn = 1
+                )
+
+                SELECT DISTINCT
+                    CASE
+                        WHEN sch.name IN ('Half Moon Bay High School', 'Pilarcitos High School')
+                            AND TRIM(schx.cds_code) IS NOT NULL
+                            THEN TRIM(schx.cds_code)
+                        WHEN TRIM(sgrx.cds_code) IS NOT NULL
+                            THEN TRIM(sgrx.cds_code)
+                        ELSE '99999999999999'
+                    END AS CDSCode,
+
+                    CASE
+                        WHEN sgrx.uccsu_area IS NULL THEN 'Z'
+                        WHEN SUBSTR(TRIM(sgrx.uccsu_area), 1, 1) IN ('A','B','C','D','E','F','G','Z')
+                            THEN SUBSTR(TRIM(sgrx.uccsu_area), 1, 1)
+                        ELSE 'Z'
+                    END AS "Graduation Requirements",
+
+                    NULL AS Subject,
+
+                    NULLIF(TRIM(crsx.transcriptcoursename), '') AS CourseTitle,
+
+                    NULLIF(TRIM(c.course_name), '') AS Description,
+
+                    CASE
+                        WHEN NULLIF(TRIM(sec.course_number), '') IS NOT NULL THEN TRIM(sec.course_number)
+                        ELSE '9999'
+                    END AS CourseNumber,
+
+                    NULL AS CourseDuration,
+
+                    NULL AS Academic,
+
+                    c.credit_hours AS Credits,
+
+                    CASE
+                        WHEN TRIM(crsx.ns_instructional_lvl) = '14' THEN 'Honors'
+                        WHEN apib.academicindicator IN ('AP', 'IB') THEN apib.academicindicator
+                        ELSE NULL
+                    END AS Honors,
+
+                    'Y' AS Offered,
+
+                    CASE
+                        WHEN TRIM(crsx.dept_grade_lvl_range) = 'MID' THEN 'Middle'
+                        WHEN TRIM(crsx.dept_grade_lvl_range) = 'SEC' THEN 'High'
+                        ELSE NULL
+                    END AS SchoolType,
+
+                    CASE
+                        WHEN t.firstday IS NOT NULL AND t.lastday IS NOT NULL THEN
+                            TO_CHAR(t.firstday, 'YYYY') || '-' || SUBSTR(TO_CHAR(t.lastday, 'YYYY'), 3, 2)
+                        ELSE NULL
+                    END AS Year,
+
+                    CASE
+                        WHEN NULLIF(TRIM(ccf.alt_course_number), '') IS NOT NULL THEN TRIM(ccf.alt_course_number)
+                        ELSE '9999'
+                    END AS StateCourseCode
+
+                FROM sections sec
+                JOIN terms t
+                    ON t.id = sec.termid
+                JOIN courses c
+                    ON c.course_number = sec.course_number
+                LEFT JOIN schools sch
+                    ON sch.school_number = sec.schoolid
+                LEFT JOIN s_ca_crs_x crsx
+                    ON crsx.coursesdcid = c.dcid
+                LEFT JOIN coursescorefields ccf
+                    ON ccf.coursesdcid = c.dcid
+                LEFT JOIN storedgrades_one sgo
+                    ON sgo.schoolid = sec.schoolid
+                AND sgo.course_number = sec.course_number
+                LEFT JOIN s_ca_sgr_x sgrx
+                    ON sgrx.storedgradesdcid = sgo.storedgradesdcid
+                LEFT JOIN s_ca_sch_x schx
+                    ON schx.schoolsdcid = sch.dcid
+                LEFT JOIN calpads_ap_ib_codes apib
+                    ON apib.course_code = TRIM(ccf.alt_course_number)
+                WHERE sec.schoolid IN (4130027, 4132817)
+                AND EXTRACT(YEAR FROM t.firstday) = :school_year_start
+                AND NVL(crsx.state_excludefromreporting, 0) = 0
+                AND NVL(TRIM(crsx.dept_grade_lvl_range), 'SEC') IN ('MID', 'SEC')
+                ORDER BY
+                    CDSCode,
+                    CourseNumber,
+                    Year;
+            ]]>
+        </sql>
+    </query>
 </queries>
