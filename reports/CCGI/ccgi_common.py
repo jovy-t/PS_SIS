@@ -74,7 +74,19 @@ def fetch_powerquery_records(
 
         response.raise_for_status()
 
+        response.raise_for_status()
+
         data = response.json()
+
+        if isinstance(data, dict) and data.get("message") == "Error while executing PowerQuery":
+            raise RuntimeError(
+                "PowerSchool returned 'Error while executing PowerQuery'. "
+                "The request reached the API, but the query itself failed during execution.\n"
+                f"URL: {query_url}\n"
+                f"Payload: {payload or {}}\n"
+                f"Response: {data}"
+            )
+
         records = data.get("record", [])
 
         print(f"Page {page}: fetched {len(records)} records")
