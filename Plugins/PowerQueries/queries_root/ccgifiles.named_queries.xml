@@ -601,7 +601,7 @@
 
         <columns>
             <column column="S_CA_SCH_X.CDS_CODE">CDSCode</column>
-            <column column="S_CA_SGR_X.UCCSU_AREA">Graduation Requirements</column>
+            <column column="S_CA_SGR_X.UCCSU_AREA">GraduationRequirements</column>
             <column column="COURSES.SCHED_COURSESUBJECTAREACODE">Subject</column>
             <column column="S_CA_CRS_X.TRANSCRIPTCOURSENAME">CourseTitle</column>
             <column column="COURSES.COURSE_NAME">Description</column>
@@ -755,7 +755,7 @@
                         WHEN SUBSTR(TRIM(sgrx.uccsu_area), 1, 1) IN ('A','B','C','D','E','F','G','Z')
                             THEN SUBSTR(TRIM(sgrx.uccsu_area), 1, 1)
                         ELSE 'Z'
-                    END AS "Graduation Requirements",
+                    END AS GraduationRequirements,
 
                     NULL AS Subject,
 
@@ -826,7 +826,7 @@
                 ORDER BY
                     CDSCode,
                     CourseNumber,
-                    Year;
+                    Year
             ]]>
         </sql>
     </query>
