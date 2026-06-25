@@ -1,6 +1,54 @@
--- Pulls Parent data
+WITH person_address_cte AS (
+    SELECT 
+        personid,
+        street,
+        linetwo,
+        city,
+        postalcode
+    FROM (
+        SELECT 
+            paa.personid,
+            pa.street,
+            pa.linetwo,
+            pa.city,
+            pa.postalcode,
+            ROW_NUMBER() OVER (PARTITION BY paa.personid ORDER BY paa.personaddressid DESC) AS rn
+        FROM personaddressassoc paa
+        JOIN personaddress pa ON pa.personaddressid = paa.personaddressid
+    )
+    WHERE rn = 1
+),
 
-WITH ranked_contacts AS (
+person_phone_cte AS (
+    SELECT 
+        personid,
+        phonenumberasentered
+    FROM (
+        SELECT 
+            personid,
+            phonenumberasentered,
+            ROW_NUMBER() OVER (PARTITION BY personid ORDER BY personphonenumberassocid DESC) AS rn
+        FROM personphonenumberassoc
+    )
+    WHERE rn = 1
+),
+
+person_email_cte AS (
+    SELECT 
+        personid,
+        emailaddress
+    FROM (
+        SELECT 
+            peaa.personid,
+            ea.emailaddress,
+            ROW_NUMBER() OVER (PARTITION BY peaa.personid ORDER BY peaa.emailaddressid DESC) AS rn
+        FROM personemailaddressassoc peaa
+        JOIN emailaddress ea ON ea.emailaddressid = peaa.emailaddressid
+    )
+    WHERE rn = 1
+),
+
+ranked_contacts AS (
     SELECT
         s.dcid,
         s.student_number,
@@ -8,14 +56,14 @@ WITH ranked_contacts AS (
         p.middlename,
         p.lastname,
         COALESCE(cs.displayvalue, cs.description) AS relationship,
-        CASE scd.liveswithflg
-            WHEN 1 THEN 'Yes'
-            WHEN 0 THEN 'No'
-            ELSE 'Unknown'
-        END AS lives_with,
-        p.gendercodesetid AS contact_gender,
         rel.primary_contact,
         dem.parented,
+        addr.street,
+        addr.linetwo,
+        addr.city,
+        addr.postalcode,
+        ph.phonenumberasentered,
+        em.emailaddress,
         ROW_NUMBER() OVER (
             PARTITION BY s.dcid
             ORDER BY rel.primary_contact DESC, sca.contactpriorityorder NULLS LAST, p.lastname, p.firstname
@@ -33,50 +81,57 @@ WITH ranked_contacts AS (
         ON rel.students_dcid = s.dcid AND rel.s_contacts_sid = p.id
     LEFT JOIN S_CA_STU_X dem
         ON dem.studentsdcid = s.dcid
+    LEFT JOIN person_address_cte addr
+        ON addr.personid = p.id
+    LEFT JOIN person_phone_cte ph
+        ON ph.personid = p.id
+    LEFT JOIN person_email_cte em
+        ON em.personid = p.id
 )
 
 SELECT
-    s.last_name,
-    s.first_name,
-    s.student_number,
-    s.state_studentnumber,
+    s.student_number AS student_local_id,
+    s.state_studentnumber AS ssid,
+    s.first_name AS student_first_name,
+    s.last_name AS student_last_name,
 
-    -- First Parent
-    rc1.firstname AS "Parent 1 First Name",
-    rc1.lastname AS "Parent 1 Last Name",
-    rc1.lives_with AS "Lives with Child",
-    rc1.relationship AS "Parent 1 Relationship to Child",
-    rc1.contact_gender AS "Parent 1 Gender",
-    dem.parented AS "Parent 1 Education Level",
+    rc1.lastname AS parent_1_last_name,
+    rc1.firstname AS parent_1_first_name,
+    rc1.relationship AS parent_1_relationship,
+    dem.parented AS parent_1_education_level,
+    dem.parentcorresplang AS parent_1_language,
+    rc1.emailaddress AS parent_1_email,
+    rc1.phonenumberasentered AS parent_1_cell_phone,
+    rc1.street || CASE WHEN rc1.linetwo IS NOT NULL THEN ' ' || rc1.linetwo END AS parent_1_residential_address,
+    rc1.city AS parent_1_residential_city,
+    rc1.postalcode AS parent_1_residential_zip_code,
 
-    -- Second Parent
-    rc2.firstname AS "Parent 2 First Name",
-    rc2.lastname AS "Parent 2 Last Name",
-    rc2.lives_with AS "Lives with Child",
-    rc2.relationship AS "Parent 2 Relationship to Child",
-    rc2.contact_gender AS "Parent 2 Gender",
-    dem.parented2 AS "Parent 2 Education Level"
+    rc2.lastname AS parent_2_last_name,
+    rc2.firstname AS parent_2_first_name,
+    rc2.relationship AS parent_2_relationship,
+    dem.parented2 AS parent_2_education_level,
+    NULL AS parent_2_language,
+    rc2.emailaddress AS parent_2_email,
+    rc2.phonenumberasentered AS parent_2_cell_phone,
+    rc2.street || CASE WHEN rc2.linetwo IS NOT NULL THEN ' ' || rc2.linetwo END AS parent_2_residential_address,
+    rc2.city AS parent_2_residential_city,
+    rc2.postalcode AS parent_2_residential_zip_code
 
 FROM students s
 LEFT JOIN S_CA_STU_X dem
     ON dem.studentsdcid = s.dcid
 LEFT JOIN schools sch
     ON sch.school_number = s.schoolid
-
--- Parent 1
 LEFT JOIN (
     SELECT * FROM ranked_contacts WHERE rn = 1
 ) rc1
     ON rc1.dcid = s.dcid
-
--- Parent 2
 LEFT JOIN (
     SELECT * FROM ranked_contacts WHERE rn = 2
 ) rc2
     ON rc2.dcid = s.dcid
-
 WHERE s.enroll_status = 0
-    AND s.grade_level BETWEEN -1 AND 2
-    AND s.schoolid NOT IN ('777777','888888')
+    AND s.grade_level BETWEEN -1 AND 3
+    AND s.schoolid NOT IN ('1', '2', '777777','888888')
     AND s.EXITCODE IS NULL
 ORDER BY s.last_name;
