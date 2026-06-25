@@ -5,8 +5,8 @@
   DESCRIPTION:
   This high-performance reporting query extracts, cleanses, and consolidates 
   complex student demographic, enrollment, and program data for county 
-  compliance auditing (SMCOE). It targets the active TK–3 student cohort while 
-  defensively mitigating severe data fragmentation and 1-to-Many cardinality inflation.
+  compliance auditing (SMCOE). It targets active and recently disenrolled
+  TK–3 student cohorts while defensively mitigating severe data fragmentation.
 
   ADVANCED DESIGN PATTERNS SHOWCASED:
   1. Analytical Windowing (Deterministic Deduplication via ROW_NUMBER)
@@ -244,9 +244,8 @@ LEFT JOIN teacher_cc tcc        ON tcc.STUDENTID = e.ID
 LEFT JOIN teacher_psm tpsm      ON tpsm.STUDENTID = e.ID
 LEFT JOIN teacher_by_cn tcn      ON tcn.STUDENTID = e.ID
 
-WHERE e.ENROLL_STATUS = 0                                       -- Restrict to currently active enrollments
-  AND e.GRADE_LEVEL BETWEEN -1 AND 3                            -- TK (Transitional Kindergarten) through 3rd Grade cohort
-  AND e.SCHOOLID NOT IN ('777777', '888888', '1', '2', '4168890')        
-  AND e.EXITCODE IS NULL                                        -- Filter out dropped/withdrawn students
+WHERE e.GRADE_LEVEL BETWEEN -1 AND 3                             -- TK (Transitional Kindergarten) through 3rd Grade cohort
+  AND e.SCHOOLID NOT IN ('777777', '888888', '1', '2', '4168890') 
+  AND TO_CHAR(e.EXITDATE, 'YYYY') = :P1_YEAR
 
 ORDER BY sch.NAME, e.STUDENT_NUMBER ASC;

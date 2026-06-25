@@ -130,8 +130,7 @@ LEFT JOIN (
     SELECT * FROM ranked_contacts WHERE rn = 2
 ) rc2
     ON rc2.dcid = s.dcid
-WHERE s.enroll_status = 0
-    AND s.grade_level BETWEEN -1 AND 3
-    AND s.schoolid NOT IN ('1', '2', '777777','888888')
-    AND s.EXITCODE IS NULL
+WHERE s.grade_level BETWEEN -1 AND 3
+    AND s.schoolid NOT IN ('777777', '888888', '1', '2', '4168890') 
+    AND TO_CHAR(s.exitdate, 'YYYY') = :P1_YEAR
 ORDER BY s.last_name;
